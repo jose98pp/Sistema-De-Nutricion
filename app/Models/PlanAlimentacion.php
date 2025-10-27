@@ -1,0 +1,59 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
+
+class PlanAlimentacion extends Model
+{
+    use HasFactory;
+
+    protected $table = 'planes_alimentacion';
+    protected $primaryKey = 'id_plan';
+
+    protected $fillable = [
+        'id_contrato',
+        'nombre',
+        'descripcion',
+        'fecha_inicio',
+        'fecha_fin',
+        'id_paciente',
+    ];
+
+    protected $casts = [
+        'fecha_inicio' => 'date',
+        'fecha_fin' => 'date',
+    ];
+
+    // Relaciones
+    public function paciente()
+    {
+        return $this->belongsTo(Paciente::class, 'id_paciente');
+    }
+
+    public function contrato()
+    {
+        return $this->belongsTo(Contrato::class, 'id_contrato');
+    }
+
+    public function dias()
+    {
+        return $this->hasMany(PlanDia::class, 'id_plan');
+    }
+
+    // Scopes
+    public function scopeActivos($query)
+    {
+        return $query->whereDate('fecha_inicio', '<=', Carbon::now())
+                     ->whereDate('fecha_fin', '>=', Carbon::now());
+    }
+
+    // Helper para verificar si el plan está activo
+    public function getEsActivoAttribute()
+    {
+        $hoy = Carbon::now();
+        return $this->fecha_inicio <= $hoy && $this->fecha_fin >= $hoy;
+    }
+}

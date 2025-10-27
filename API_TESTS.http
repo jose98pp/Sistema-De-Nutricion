@@ -1,0 +1,345 @@
+### ========================================
+### SISTEMA DE NUTRICIÓN - API REST TESTS
+### ========================================
+
+@baseUrl = http://127.0.0.1:8000/api
+@token = YOUR_TOKEN_HERE
+
+### ========================================
+### 1. AUTENTICACIÓN
+### ========================================
+
+### Login
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "admin@nutricion.com",
+  "password": "password"
+}
+
+### ========================================
+### 2. DIRECCIONES
+### ========================================
+
+### Listar todas las direcciones
+GET {{baseUrl}}/direcciones
+Authorization: Bearer {{token}}
+
+### Crear dirección
+POST {{baseUrl}}/direcciones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id_paciente": 1,
+  "alias": "Casa Principal",
+  "descripcion": "Av. Siempre Viva 123, Capital Federal",
+  "geo_lat": -34.603722,
+  "geo_lng": -58.381592
+}
+
+### Obtener direcciones de un paciente
+GET {{baseUrl}}/direcciones/paciente/1
+Authorization: Bearer {{token}}
+
+### Actualizar dirección
+PUT {{baseUrl}}/direcciones/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "alias": "Casa Actualizada",
+  "descripcion": "Nueva descripción"
+}
+
+### Eliminar dirección
+DELETE {{baseUrl}}/direcciones/1
+Authorization: Bearer {{token}}
+
+### ========================================
+### 3. RECETAS
+### ========================================
+
+### Listar recetas
+GET {{baseUrl}}/recetas
+Authorization: Bearer {{token}}
+
+### Buscar recetas
+GET {{baseUrl}}/recetas?search=ensalada
+Authorization: Bearer {{token}}
+
+### Crear receta
+POST {{baseUrl}}/recetas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Ensalada César",
+  "kcal": 350,
+  "restricciones": "Contiene gluten, huevo, lácteos"
+}
+
+### Obtener receta específica
+GET {{baseUrl}}/recetas/1
+Authorization: Bearer {{token}}
+
+### Agregar receta a una comida
+POST {{baseUrl}}/recetas/1/agregar-comida
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id_comida": 1,
+  "porciones": 2
+}
+
+### Remover receta de una comida
+DELETE {{baseUrl}}/recetas/1/remover-comida/1
+Authorization: Bearer {{token}}
+
+### Actualizar receta
+PUT {{baseUrl}}/recetas/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Ensalada César Mejorada",
+  "kcal": 320
+}
+
+### Eliminar receta
+DELETE {{baseUrl}}/recetas/1
+Authorization: Bearer {{token}}
+
+### ========================================
+### 4. ANÁLISIS CLÍNICOS
+### ========================================
+
+### Listar análisis clínicos
+GET {{baseUrl}}/analisis-clinicos
+Authorization: Bearer {{token}}
+
+### Crear análisis clínico
+POST {{baseUrl}}/analisis-clinicos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tipo": "Análisis de Sangre Completo",
+  "resultado": "Glucosa: 95 mg/dL\nColesterol Total: 180 mg/dL\nHDL: 55 mg/dL\nLDL: 110 mg/dL\nTriglicéridos: 120 mg/dL"
+}
+
+### Obtener análisis específico
+GET {{baseUrl}}/analisis-clinicos/1
+Authorization: Bearer {{token}}
+
+### Vincular análisis a evaluación
+POST {{baseUrl}}/analisis-clinicos/1/vincular-evaluacion
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id_evaluacion": 1
+}
+
+### Desvincular análisis de evaluación
+DELETE {{baseUrl}}/analisis-clinicos/1/desvincular-evaluacion/1
+Authorization: Bearer {{token}}
+
+### Actualizar análisis
+PUT {{baseUrl}}/analisis-clinicos/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "resultado": "Resultados actualizados"
+}
+
+### Eliminar análisis
+DELETE {{baseUrl}}/analisis-clinicos/1
+Authorization: Bearer {{token}}
+
+### ========================================
+### 5. CALENDARIOS DE ENTREGA
+### ========================================
+
+### Listar calendarios
+GET {{baseUrl}}/calendarios-entrega
+Authorization: Bearer {{token}}
+
+### Crear calendario de entrega
+POST {{baseUrl}}/calendarios-entrega
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id_contrato": 1,
+  "fecha_inicio": "2025-02-01",
+  "fecha_fin": "2025-02-28"
+}
+
+### Obtener calendario específico
+GET {{baseUrl}}/calendarios-entrega/1
+Authorization: Bearer {{token}}
+
+### Obtener calendario por contrato
+GET {{baseUrl}}/calendarios-entrega/contrato/1
+Authorization: Bearer {{token}}
+
+### Obtener calendarios activos
+GET {{baseUrl}}/calendarios-entrega-activos
+Authorization: Bearer {{token}}
+
+### Actualizar calendario
+PUT {{baseUrl}}/calendarios-entrega/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fecha_fin": "2025-03-15"
+}
+
+### Eliminar calendario
+DELETE {{baseUrl}}/calendarios-entrega/1
+Authorization: Bearer {{token}}
+
+### ========================================
+### 6. ENTREGAS PROGRAMADAS
+### ========================================
+
+### Listar entregas programadas
+GET {{baseUrl}}/entregas-programadas
+Authorization: Bearer {{token}}
+
+### Filtrar entregas por estado
+GET {{baseUrl}}/entregas-programadas?estado=PROGRAMADA
+Authorization: Bearer {{token}}
+
+### Filtrar entregas por rango de fechas
+GET {{baseUrl}}/entregas-programadas?fecha_desde=2025-02-01&fecha_hasta=2025-02-28
+Authorization: Bearer {{token}}
+
+### Crear entrega programada
+POST {{baseUrl}}/entregas-programadas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id_calendario": 1,
+  "id_direccion": 1,
+  "id_comida": 1,
+  "fecha": "2025-02-15",
+  "estado": "PROGRAMADA"
+}
+
+### Obtener entrega específica
+GET {{baseUrl}}/entregas-programadas/1
+Authorization: Bearer {{token}}
+
+### Marcar entrega como entregada
+PUT {{baseUrl}}/entregas-programadas/1/marcar-entregada
+Authorization: Bearer {{token}}
+
+### Marcar entrega como omitida
+PUT {{baseUrl}}/entregas-programadas/1/marcar-omitida
+Authorization: Bearer {{token}}
+
+### Obtener entregas del día
+GET {{baseUrl}}/entregas-del-dia
+Authorization: Bearer {{token}}
+
+### Obtener entregas del día específico
+GET {{baseUrl}}/entregas-del-dia?fecha=2025-02-15
+Authorization: Bearer {{token}}
+
+### Obtener entregas pendientes
+GET {{baseUrl}}/entregas-pendientes
+Authorization: Bearer {{token}}
+
+### Generar entregas automáticamente para un calendario
+POST {{baseUrl}}/entregas-programadas/generar/1
+Authorization: Bearer {{token}}
+
+### Actualizar entrega
+PUT {{baseUrl}}/entregas-programadas/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "estado": "ENTREGADA"
+}
+
+### Eliminar entrega
+DELETE {{baseUrl}}/entregas-programadas/1
+Authorization: Bearer {{token}}
+
+### ========================================
+### 7. TESTS COMBINADOS
+### ========================================
+
+### Crear flujo completo: Dirección → Calendario → Entregas
+### Paso 1: Crear dirección
+POST {{baseUrl}}/direcciones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id_paciente": 1,
+  "alias": "Oficina",
+  "descripcion": "Av. Corrientes 1234, CABA",
+  "geo_lat": -34.604140,
+  "geo_lng": -58.385682
+}
+
+### Paso 2: Crear calendario (usar id_contrato existente)
+POST {{baseUrl}}/calendarios-entrega
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id_contrato": 1,
+  "fecha_inicio": "2025-02-01",
+  "fecha_fin": "2025-02-15"
+}
+
+### Paso 3: Generar entregas automáticamente
+POST {{baseUrl}}/entregas-programadas/generar/1
+Authorization: Bearer {{token}}
+
+### Paso 4: Ver entregas generadas
+GET {{baseUrl}}/entregas-programadas?id_calendario=1
+Authorization: Bearer {{token}}
+
+### ========================================
+### 8. VALIDACIÓN DE DATOS
+### ========================================
+
+### Test: Crear dirección sin datos requeridos (debe fallar)
+POST {{baseUrl}}/direcciones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "alias": "Sin paciente"
+}
+
+### Test: Crear receta con nombre duplicado (debe fallar)
+POST {{baseUrl}}/recetas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Ensalada César"
+}
+
+### Test: Crear calendario con fechas inválidas (debe fallar)
+POST {{baseUrl}}/calendarios-entrega
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id_contrato": 1,
+  "fecha_inicio": "2025-02-28",
+  "fecha_fin": "2025-02-01"
+}
