@@ -115,11 +115,19 @@ const MisComidasHoy = () => {
                                 day: 'numeric'
                             })}
                         </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            📋 Comidas de tu plan • <Link to="/ingestas" className="text-primary-600 hover:text-primary-700 dark:text-primary-400">Ver historial completo</Link>
+                        </p>
                     </div>
-                    <Link to="/mi-menu-semanal" className="btn-secondary flex items-center gap-2">
-                        <Calendar className="w-4 h-4" />
-                        Ver Menú Semanal
-                    </Link>
+                    <div className="flex gap-2">
+                        <Link to="/ingestas/nuevo" className="btn-secondary flex items-center gap-2">
+                            + Alimentos Libres
+                        </Link>
+                        <Link to="/mi-menu-semanal" className="btn-secondary flex items-center gap-2">
+                            <Calendar className="w-4 h-4" />
+                            Menú Semanal
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Barra de Progreso Principal */}
@@ -275,10 +283,10 @@ const MisComidasHoy = () => {
                                                     )}
                                                 </button>
                                                 <Link
-                                                    to="/ingestas/nueva"
+                                                    to="/ingestas/nueva?tipo=libre"
                                                     className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
                                                 >
-                                                    ✏️ Modifiqué algo
+                                                    ➕ Agregar alimentos extra
                                                 </Link>
                                             </div>
                                         )}

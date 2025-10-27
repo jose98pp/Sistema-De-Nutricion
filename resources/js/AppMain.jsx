@@ -2,6 +2,8 @@ import React from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './components/Toast';
+import { ConfirmProvider } from './components/ConfirmDialog';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Pages
@@ -59,7 +61,9 @@ function App() {
     return (
         <AuthProvider>
             <ThemeProvider>
-                <Routes>
+                <ToastProvider>
+                    <ConfirmProvider>
+                        <Routes>
                     {/* Public Routes */}
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
@@ -162,7 +166,9 @@ function App() {
                     
                     {/* Redirect */}
                     <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
+                        </Routes>
+                    </ConfirmProvider>
+                </ToastProvider>
             </ThemeProvider>
         </AuthProvider>
     );

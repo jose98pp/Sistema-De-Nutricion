@@ -17,9 +17,22 @@ class PlanAlimentacionMejoradoController extends Controller
      */
     public function index(Request $request)
     {
-        $query = PlanAlimentacion::with(['contrato.paciente', 'contrato.servicio', 'planDias.comidas.alimentos']);
+        $query = PlanAlimentacion::with(['contrato.paciente.user', 'contrato.servicio', 'planDias.comidas.alimentos']);
         
-        // Filtrar por paciente
+        // Búsqueda por nombre, apellido, correo o celular del paciente
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->whereHas('contrato.paciente', function($q) use ($search) {
+                $q->where('nombre', 'LIKE', "%{$search}%")
+                  ->orWhere('apellido', 'LIKE', "%{$search}%")
+                  ->orWhere('celular', 'LIKE', "%{$search}%")
+                  ->orWhereHas('user', function($userQuery) use ($search) {
+                      $userQuery->where('email', 'LIKE', "%{$search}%");
+                  });
+            });
+        }
+        
+        // Filtrar por paciente ID específico
         if ($request->has('paciente_id')) {
             $query->whereHas('contrato', function($q) use ($request) {
                 $q->where('id_paciente', $request->paciente_id);
@@ -29,6 +42,11 @@ class PlanAlimentacionMejoradoController extends Controller
         // Filtrar por estado
         if ($request->has('estado')) {
             $query->where('estado', $request->estado);
+        }
+        
+        // Filtrar solo planes activos
+        if ($request->has('activo') && $request->activo == 1) {
+            $query->where('estado', 'ACTIVO');
         }
         
         $planes = $query->orderBy('created_at', 'desc')->paginate(15);
@@ -47,6 +65,7 @@ class PlanAlimentacionMejoradoController extends Controller
             'calorias_objetivo' => 'required|integer|min:1000|max:5000',
             'descripcion' => 'nullable|string',
             'id_contrato' => 'required|exists:contratos,id_contrato',
+            'id_nutricionista' => 'nullable|exists:nutricionistas,id_nutricionista',
             'estado' => 'nullable|in:ACTIVO,INACTIVO,FINALIZADO',
             'plan_dias' => 'required|array|min:7|max:7',
             'plan_dias.*.dia_numero' => 'required|integer|min:1|max:7',
@@ -66,13 +85,51 @@ class PlanAlimentacionMejoradoController extends Controller
 
         DB::beginTransaction();
         try {
+            // Obtener el contrato con el paciente
+            $contrato = \App\Models\Contrato::with('paciente')->findOrFail($request->id_contrato);
+            
+            // Determinar el id_nutricionista
+            $user = $request->user();
+            $idNutricionista = null;
+            
+            // 1. Si se especifica en la petición (admin puede especificarlo)
+            if ($request->has('id_nutricionista')) {
+                $idNutricionista = $request->id_nutricionista;
+            }
+            // 2. Si el usuario es nutricionista, usar su ID
+            elseif ($user->nutricionista) {
+                $idNutricionista = $user->nutricionista->id_nutricionista;
+            }
+            // 3. Si no, usar el nutricionista asignado al paciente
+            elseif ($contrato->paciente && $contrato->paciente->id_nutricionista) {
+                $idNutricionista = $contrato->paciente->id_nutricionista;
+            }
+            
+            // Validar que se haya obtenido un nutricionista
+            if (!$idNutricionista) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pudo determinar el nutricionista para este plan. El paciente debe tener un nutricionista asignado.'
+                ], 422);
+            }
+            
+            // Calcular fecha_inicio y fecha_fin desde los días del plan
+            $fechas = collect($request->plan_dias)->pluck('fecha')->sort();
+            $fechaInicio = $fechas->first();
+            $fechaFin = $fechas->last();
+            
             // Crear el plan
             $plan = PlanAlimentacion::create([
+                'nombre' => $request->nombre_plan, // Campo legacy
                 'nombre_plan' => $request->nombre_plan,
                 'objetivo' => $request->objetivo,
                 'calorias_objetivo' => $request->calorias_objetivo,
                 'descripcion' => $request->descripcion,
+                'fecha_inicio' => $fechaInicio,
+                'fecha_fin' => $fechaFin,
                 'id_contrato' => $request->id_contrato,
+                'id_paciente' => $contrato->id_paciente,
+                'id_nutricionista' => $idNutricionista,
                 'estado' => $request->estado ?? 'ACTIVO',
             ]);
 
@@ -80,6 +137,7 @@ class PlanAlimentacionMejoradoController extends Controller
             foreach ($request->plan_dias as $diaData) {
                 $planDia = PlanDia::create([
                     'id_plan' => $plan->id_plan,
+                    'dia_index' => $diaData['dia_numero'], // Campo legacy
                     'dia_numero' => $diaData['dia_numero'],
                     'dia_semana' => $diaData['dia_semana'],
                     'fecha' => $diaData['fecha'],
@@ -173,12 +231,20 @@ class PlanAlimentacionMejoradoController extends Controller
 
         DB::beginTransaction();
         try {
+            // Calcular fecha_inicio y fecha_fin desde los días del plan
+            $fechas = collect($request->plan_dias)->pluck('fecha')->sort();
+            $fechaInicio = $fechas->first();
+            $fechaFin = $fechas->last();
+            
             // Actualizar plan
             $plan->update([
+                'nombre' => $request->nombre_plan, // Campo legacy
                 'nombre_plan' => $request->nombre_plan,
                 'objetivo' => $request->objetivo,
                 'calorias_objetivo' => $request->calorias_objetivo,
                 'descripcion' => $request->descripcion,
+                'fecha_inicio' => $fechaInicio,
+                'fecha_fin' => $fechaFin,
                 'estado' => $request->estado ?? $plan->estado,
             ]);
 
@@ -195,6 +261,7 @@ class PlanAlimentacionMejoradoController extends Controller
             foreach ($request->plan_dias as $diaData) {
                 $planDia = PlanDia::create([
                     'id_plan' => $plan->id_plan,
+                    'dia_index' => $diaData['dia_numero'], // Campo legacy
                     'dia_numero' => $diaData['dia_numero'],
                     'dia_semana' => $diaData['dia_semana'],
                     'fecha' => $diaData['fecha'],
@@ -289,13 +356,22 @@ class PlanAlimentacionMejoradoController extends Controller
 
         DB::beginTransaction();
         try {
+            // Calcular fecha_inicio y fecha_fin
+            $fechaInicio = Carbon::parse($request->fecha_inicio);
+            $fechaFin = $fechaInicio->copy()->addDays(6);
+            
             // Crear nuevo plan
             $nuevoPlan = PlanAlimentacion::create([
+                'nombre' => $request->nombre_plan, // Campo legacy
                 'nombre_plan' => $request->nombre_plan,
                 'objetivo' => $planOriginal->objetivo,
                 'calorias_objetivo' => $planOriginal->calorias_objetivo,
                 'descripcion' => $planOriginal->descripcion,
+                'fecha_inicio' => $fechaInicio->toDateString(),
+                'fecha_fin' => $fechaFin->toDateString(),
                 'id_contrato' => $planOriginal->id_contrato,
+                'id_paciente' => $planOriginal->id_paciente,
+                'id_nutricionista' => $planOriginal->id_nutricionista,
                 'estado' => 'ACTIVO',
             ]);
 
@@ -305,6 +381,7 @@ class PlanAlimentacionMejoradoController extends Controller
                 
                 $nuevoDia = PlanDia::create([
                     'id_plan' => $nuevoPlan->id_plan,
+                    'dia_index' => $diaOriginal->dia_numero, // Campo legacy
                     'dia_numero' => $diaOriginal->dia_numero,
                     'dia_semana' => $diaOriginal->dia_semana,
                     'fecha' => $nuevaFecha->toDateString(),

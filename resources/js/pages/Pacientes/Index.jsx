@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
+import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import api from '../../config/api';
 
 const PacientesIndex = () => {
@@ -10,6 +12,8 @@ const PacientesIndex = () => {
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [error, setError] = useState(null);
+    const toast = useToast();
+    const confirm = useConfirm();
 
     useEffect(() => {
         fetchPacientes();
@@ -30,7 +34,9 @@ const PacientesIndex = () => {
             }
         } catch (error) {
             console.error('Error al cargar pacientes:', error.response?.data || error.message);
-            setError(`Error al cargar los pacientes: ${error.response?.data?.message || error.message}. Verifica tu conexión o intenta de nuevo.`);
+            const errorMessage = error.response?.data?.message || error.message || 'Error desconocido';
+            setError(`Error al cargar los pacientes: ${errorMessage}. Verifica tu conexión o intenta de nuevo.`);
+            toast.error(`Error al cargar pacientes: ${errorMessage}`);
             setPacientes([]);
             setTotalPages(1);
         } finally {
@@ -38,14 +44,24 @@ const PacientesIndex = () => {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!confirm('¿Estás seguro de eliminar este paciente?')) return;
+    const handleDelete = async (id, nombrePaciente) => {
+        const confirmed = await confirm({
+            title: 'Eliminar Paciente',
+            message: `¿Estás seguro de que deseas eliminar al paciente "${nombrePaciente}"? Esta acción no se puede deshacer y eliminará todos los datos asociados.`,
+            confirmText: 'Sí, eliminar',
+            cancelText: 'Cancelar',
+            type: 'danger'
+        });
+
+        if (!confirmed) return;
 
         try {
             await api.delete(`/pacientes/${id}`);
             setPacientes(pacientes.filter(p => p.id_paciente !== id));
+            toast.success(`Paciente "${nombrePaciente}" eliminado exitosamente`);
         } catch (error) {
-            alert('Error al eliminar paciente');
+            const errorMessage = error.response?.data?.message || 'Error al eliminar paciente';
+            toast.error(errorMessage);
         }
     };
 
@@ -143,7 +159,7 @@ const PacientesIndex = () => {
                                                         Editar
                                                     </Link>
                                                     <button
-                                                        onClick={() => handleDelete(paciente.id_paciente)}
+                                                        onClick={() => handleDelete(paciente.id_paciente, `${paciente.nombre} ${paciente.apellido}`)}
                                                         className="text-red-600 hover:text-red-700"
                                                     >
                                                         Eliminar

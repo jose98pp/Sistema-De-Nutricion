@@ -1,15 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../../components/Layout';
+import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import api from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 
 const IngestaForm = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { user, isPaciente } = useAuth();
+    const toast = useToast();
+    const confirm = useConfirm();
+    
     const [loading, setLoading] = useState(false);
     const [pacienteId, setPacienteId] = useState('');
     const [fechaHora, setFechaHora] = useState('');
+    
+    // Nuevo estado para el tipo de registro
+    const [tipoRegistro, setTipoRegistro] = useState(
+        searchParams.get('tipo') === 'libre' ? 'libre' : 'plan'
+    ); // 'plan' o 'libre'
+    
+    // Estados para registro desde plan
+    const [planActual, setPlanActual] = useState(null);
+    const [comidasPlan, setComidasPlan] = useState([]);
+    const [comidaSeleccionada, setComidaSeleccionada] = useState(null);
+    
+    // Estados para registro libre
     const [alimentos, setAlimentos] = useState([]);
     const [alimentosSeleccionados, setAlimentosSeleccionados] = useState([]);
     const [busqueda, setBusqueda] = useState('');
@@ -21,8 +39,70 @@ const IngestaForm = () => {
         const fechaLocal = new Date(ahora - offset);
         setFechaHora(fechaLocal.toISOString().slice(0, 16));
 
-        fetchAlimentos();
+        // Si es paciente, cargar su plan actual primero
+        if (isPaciente()) {
+            fetchPlanActual();
+        } else {
+            fetchAlimentos();
+        }
     }, []);
+
+    useEffect(() => {
+        // Cargar datos según el tipo de registro seleccionado
+        if (tipoRegistro === 'libre') {
+            fetchAlimentos();
+        } else if (tipoRegistro === 'plan' && planActual) {
+            fetchComidasDelDia();
+        }
+    }, [tipoRegistro, planActual]);
+
+    const fetchPlanActual = async () => {
+        try {
+            const response = await api.get('/planes', {
+                params: { activo: 1 }
+            });
+            const planes = response.data.data || response.data;
+            const planActivo = planes.find(plan => {
+                const hoy = new Date();
+                const inicio = new Date(plan.fecha_inicio);
+                const fin = new Date(plan.fecha_fin);
+                return hoy >= inicio && hoy <= fin;
+            });
+            
+            setPlanActual(planActivo);
+            
+            if (!planActivo) {
+                toast.info('No tienes un plan alimenticio activo. Puedes registrar alimentos libremente.');
+                setTipoRegistro('libre');
+            }
+        } catch (error) {
+            console.error('Error al cargar plan actual:', error);
+            toast.error('Error al cargar tu plan alimenticio');
+            setTipoRegistro('libre');
+        }
+    };
+
+    const fetchComidasDelDia = async () => {
+        if (!planActual) return;
+        
+        try {
+            // Obtener las comidas del plan para el día actual
+            const fechaHoy = new Date().toISOString().split('T')[0];
+            const response = await api.get(`/planes/${planActual.id_plan}`);
+            const planDetalle = response.data;
+            
+            // Filtrar comidas del día actual
+            const comidasHoy = planDetalle.comidas?.filter(comida => {
+                const fechaComida = new Date(comida.fecha).toISOString().split('T')[0];
+                return fechaComida === fechaHoy;
+            }) || [];
+            
+            setComidasPlan(comidasHoy);
+        } catch (error) {
+            console.error('Error al cargar comidas del plan:', error);
+            toast.error('Error al cargar las comidas de tu plan');
+        }
+    };
 
     const fetchAlimentos = async () => {
         try {
@@ -30,6 +110,7 @@ const IngestaForm = () => {
             setAlimentos(response.data.data || response.data);
         } catch (error) {
             console.error('Error al cargar alimentos:', error);
+            toast.error('Error al cargar la lista de alimentos');
         }
     };
 
@@ -72,27 +153,61 @@ const IngestaForm = () => {
         }, { calorias: 0, proteinas: 0, carbohidratos: 0, grasas: 0 });
     };
 
+    const registrarComidaDelPlan = async (comida) => {
+        const confirmed = await confirm({
+            title: 'Registrar Comida del Plan',
+            message: `¿Confirmas que consumiste "${comida.nombre}" según tu plan alimenticio?`,
+            confirmText: 'Sí, registrar',
+            type: 'default'
+        });
+
+        if (!confirmed) return;
+
+        setLoading(true);
+        try {
+            // Obtener id_paciente
+            const idPaciente = user.paciente?.id_paciente || user.id_paciente;
+            
+            const data = {
+                fecha_hora: fechaHora,
+                id_paciente: idPaciente,
+                id_comida_plan: comida.id_comida, // Referencia a la comida del plan
+                alimentos: comida.alimentos.map(a => ({
+                    id_alimento: a.id_alimento,
+                    cantidad_gramos: a.pivot?.cantidad_gramos || a.cantidad_gramos
+                }))
+            };
+
+            await api.post('/ingestas', data);
+            toast.success('Comida del plan registrada exitosamente');
+            navigate('/ingestas');
+        } catch (error) {
+            console.error('Error al registrar comida del plan:', error);
+            toast.error('Error al registrar la comida del plan');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (alimentosSeleccionados.length === 0) {
-            alert('Debes agregar al menos un alimento');
+        if (tipoRegistro === 'libre' && alimentosSeleccionados.length === 0) {
+            toast.warning('Debes agregar al menos un alimento');
             return;
         }
 
         // Obtener id_paciente
         let idPaciente;
-        if (isPaciente) {
-            // Si es paciente, obtener su id_paciente
+        if (isPaciente()) {
             idPaciente = user.paciente?.id_paciente || user.id_paciente;
             if (!idPaciente) {
-                alert('Error: No se pudo obtener tu ID de paciente. Por favor contacta al administrador.');
+                toast.error('Error: No se pudo obtener tu ID de paciente. Por favor contacta al administrador.');
                 return;
             }
         } else {
-            // Si es nutricionista/admin, debe seleccionar un paciente
             if (!pacienteId) {
-                alert('Debes seleccionar un paciente');
+                toast.warning('Debes seleccionar un paciente');
                 return;
             }
             idPaciente = pacienteId;
@@ -104,26 +219,25 @@ const IngestaForm = () => {
             const data = {
                 fecha_hora: fechaHora,
                 id_paciente: idPaciente,
+                tipo_registro: tipoRegistro,
                 alimentos: alimentosSeleccionados.map(a => ({
                     id_alimento: a.id_alimento,
                     cantidad_gramos: a.cantidad_gramos
                 }))
             };
 
-            console.log('Enviando datos:', data); // Para debug
-
             await api.post('/ingestas', data);
-            alert('Ingesta registrada exitosamente');
+            toast.success('Ingesta registrada exitosamente');
             navigate('/ingestas');
         } catch (error) {
             console.error('Error completo:', error);
             if (error.response?.data?.errors) {
-                const errores = Object.values(error.response.data.errors).flat().join('\n');
-                alert('Errores de validación:\n' + errores);
+                const errores = Object.values(error.response.data.errors).flat().join(', ');
+                toast.error(`Errores de validación: ${errores}`);
             } else if (error.response?.data?.message) {
-                alert('Error: ' + error.response.data.message);
+                toast.error(`Error: ${error.response.data.message}`);
             } else {
-                alert('Error al registrar ingesta. Por favor intenta de nuevo.');
+                toast.error('Error al registrar ingesta. Por favor intenta de nuevo.');
             }
         } finally {
             setLoading(false);
@@ -180,8 +294,148 @@ const IngestaForm = () => {
                         </div>
                     </div>
 
-                    <div className="card">
-                        <h3 className="text-xl font-bold mb-4">Agregar Alimentos</h3>
+                    {/* Selector de tipo de registro (solo para pacientes) */}
+                    {isPaciente() && (
+                        <div className="card">
+                            <h3 className="text-xl font-bold mb-4">¿Cómo quieres registrar tu ingesta?</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setTipoRegistro('plan')}
+                                    className={`p-4 border-2 rounded-lg text-left transition-colors ${
+                                        tipoRegistro === 'plan' 
+                                            ? 'border-primary-500 bg-primary-50' 
+                                            : 'border-gray-300 hover:border-gray-400'
+                                    }`}
+                                    disabled={!planActual}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-4 h-4 rounded-full border-2 ${
+                                            tipoRegistro === 'plan' ? 'border-primary-500 bg-primary-500' : 'border-gray-300'
+                                        }`}>
+                                            {tipoRegistro === 'plan' && <div className="w-2 h-2 bg-white rounded-full mx-auto mt-0.5"></div>}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-gray-800">📋 Desde mi Plan</h4>
+                                            <p className="text-sm text-gray-600">
+                                                {planActual 
+                                                    ? 'Registra comidas de tu plan alimenticio'
+                                                    : 'No tienes un plan activo'
+                                                }
+                                            </p>
+                                        </div>
+                                    </div>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setTipoRegistro('libre')}
+                                    className={`p-4 border-2 rounded-lg text-left transition-colors ${
+                                        tipoRegistro === 'libre' 
+                                            ? 'border-primary-500 bg-primary-50' 
+                                            : 'border-gray-300 hover:border-gray-400'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-4 h-4 rounded-full border-2 ${
+                                            tipoRegistro === 'libre' ? 'border-primary-500 bg-primary-500' : 'border-gray-300'
+                                        }`}>
+                                            {tipoRegistro === 'libre' && <div className="w-2 h-2 bg-white rounded-full mx-auto mt-0.5"></div>}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-gray-800">🍎 Alimentos Libres</h4>
+                                            <p className="text-sm text-gray-600">
+                                                Registra cualquier alimento adicional
+                                            </p>
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Comidas del Plan */}
+                    {isPaciente() && tipoRegistro === 'plan' && (
+                        <div className="card">
+                            <h3 className="text-xl font-bold mb-4">🍽️ Comidas de tu Plan para Hoy</h3>
+                            
+                            {comidasPlan.length === 0 ? (
+                                <div className="text-center py-8">
+                                    <p className="text-gray-500 mb-4">No tienes comidas programadas para hoy en tu plan</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setTipoRegistro('libre')}
+                                        className="btn-secondary"
+                                    >
+                                        Registrar Alimentos Libres
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {comidasPlan.map((comida, index) => {
+                                        const totales = comida.alimentos?.reduce((acc, alimento) => {
+                                            const cantidad = alimento.pivot?.cantidad_gramos || 100;
+                                            const factor = cantidad / 100;
+                                            return {
+                                                calorias: acc.calorias + (alimento.calorias_por_100g * factor),
+                                                proteinas: acc.proteinas + (alimento.proteinas_por_100g * factor),
+                                                carbohidratos: acc.carbohidratos + (alimento.carbohidratos_por_100g * factor),
+                                                grasas: acc.grasas + (alimento.grasas_por_100g * factor),
+                                            };
+                                        }, { calorias: 0, proteinas: 0, carbohidratos: 0, grasas: 0 }) || { calorias: 0, proteinas: 0, carbohidratos: 0, grasas: 0 };
+
+                                        return (
+                                            <div key={index} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div>
+                                                        <h4 className="font-semibold text-lg">{comida.nombre}</h4>
+                                                        <p className="text-sm text-gray-600">
+                                                            {comida.hora_recomendada} • {totales.calorias.toFixed(0)} kcal
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => registrarComidaDelPlan(comida)}
+                                                        disabled={loading}
+                                                        className="btn-primary text-sm"
+                                                    >
+                                                        ✓ Ya comí esto
+                                                    </button>
+                                                </div>
+
+                                                {comida.alimentos && comida.alimentos.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <p className="text-sm font-medium text-gray-700">Alimentos incluidos:</p>
+                                                        {comida.alimentos.map((alimento, aIndex) => (
+                                                            <div key={aIndex} className="flex justify-between text-sm text-gray-600">
+                                                                <span>• {alimento.nombre}</span>
+                                                                <span>{alimento.pivot?.cantidad_gramos || 100}g</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {comida.instrucciones && (
+                                                    <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                                                        <p className="text-sm text-blue-800">
+                                                            <strong>Instrucciones:</strong> {comida.instrucciones}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Registro Libre de Alimentos */}
+                    {(tipoRegistro === 'libre' || !isPaciente()) && (
+                        <div className="card">
+                            <h3 className="text-xl font-bold mb-4">
+                                {isPaciente() ? '🍎 Agregar Alimentos Adicionales' : 'Agregar Alimentos'}
+                            </h3>
                         
                         <div className="mb-4">
                             <input
@@ -253,9 +507,11 @@ const IngestaForm = () => {
                                 ))}
                             </div>
                         )}
-                    </div>
+                        </div>
+                    )}
 
-                    {alimentosSeleccionados.length > 0 && (
+                    {/* Totales Nutricionales - Solo para registro libre */}
+                    {(tipoRegistro === 'libre' || !isPaciente()) && alimentosSeleccionados.length > 0 && (
                         <div className="card bg-primary-50 border-2 border-primary-200">
                             <h3 className="text-xl font-bold text-primary-800 mb-4">Totales Nutricionales</h3>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -283,22 +539,38 @@ const IngestaForm = () => {
                         </div>
                     )}
 
-                    <div className="flex gap-4">
-                        <button
-                            type="submit"
-                            disabled={loading || alimentosSeleccionados.length === 0}
-                            className="btn-primary disabled:opacity-50"
-                        >
-                            {loading ? 'Guardando...' : 'Registrar Ingesta'}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => navigate('/ingestas')}
-                            className="btn-secondary"
-                        >
-                            Cancelar
-                        </button>
-                    </div>
+                    {/* Botones de acción - Solo para registro libre */}
+                    {(tipoRegistro === 'libre' || !isPaciente()) && (
+                        <div className="flex gap-4">
+                            <button
+                                type="submit"
+                                disabled={loading || alimentosSeleccionados.length === 0}
+                                className="btn-primary disabled:opacity-50"
+                            >
+                                {loading ? 'Guardando...' : 'Registrar Ingesta'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => navigate('/ingestas')}
+                                className="btn-secondary"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Botón de cancelar para registro desde plan */}
+                    {isPaciente() && tipoRegistro === 'plan' && (
+                        <div className="flex justify-end">
+                            <button
+                                type="button"
+                                onClick={() => navigate('/ingestas')}
+                                className="btn-secondary"
+                            >
+                                Volver
+                            </button>
+                        </div>
+                    )}
                 </form>
             </div>
         </Layout>

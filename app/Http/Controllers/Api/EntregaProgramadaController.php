@@ -419,7 +419,7 @@ class EntregaProgramadaController extends Controller
         $entregas = EntregaProgramada::whereHas('calendario.contrato', function($query) use ($paciente) {
             $query->where('id_paciente', $paciente->id_paciente);
         })->where('fecha', '>=', now()->toDateString())
-          ->whereIn('estado', [self::ESTADO_PROGRAMADA, self::ESTADO_PENDIENTE])
+          ->whereIn('estado', [EntregaProgramada::ESTADO_PROGRAMADA, EntregaProgramada::ESTADO_PENDIENTE])
           ->with(['direccion', 'comida', 'calendario.contrato'])
           ->orderBy('fecha', 'asc')
           ->take(7)

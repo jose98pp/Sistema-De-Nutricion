@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
+import { logApiError } from '../utils/logger';
 import api from '../config/api';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -23,6 +25,7 @@ const Dashboard = () => {
     const { user, isAdmin, isNutricionista, isPaciente } = useAuth();
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const toast = useToast();
 
     useEffect(() => {
         fetchStats();
@@ -33,7 +36,8 @@ const Dashboard = () => {
             const response = await api.get('/dashboard/stats');
             setStats(response.data);
         } catch (error) {
-            console.error('Error al cargar estadísticas:', error);
+            logApiError('/dashboard/stats', error);
+            toast.error('Error al cargar las estadísticas del dashboard');
         } finally {
             setLoading(false);
         }

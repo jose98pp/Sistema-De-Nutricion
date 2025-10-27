@@ -186,22 +186,31 @@ class DashboardController extends Controller
     }
 
     /**
-     * Calcular adherencia general de todos los pacientes
+     * Calcular adherencia general de todos los pacientes (optimizado)
      */
     private function calcularAdherenciaGeneral()
     {
-        $planesActivos = PlanAlimentacion::where('fecha_fin', '>=', now())->get();
-        
-        if ($planesActivos->isEmpty()) {
-            return 0;
-        }
+        // Consulta optimizada con agregaciones
+        $adherencia = DB::table('plan_alimentacion as p')
+            ->leftJoin('ingestas as i', function($join) {
+                $join->on('p.id_paciente', '=', 'i.id_paciente')
+                     ->whereRaw('DATE(i.fecha_hora) BETWEEN p.fecha_inicio AND LEAST(p.fecha_fin, CURDATE())');
+            })
+            ->select([
+                DB::raw('AVG(
+                    CASE 
+                        WHEN DATEDIFF(LEAST(p.fecha_fin, CURDATE()), p.fecha_inicio) = 0 THEN 0
+                        ELSE (COUNT(DISTINCT DATE(i.fecha_hora)) * 100.0) / 
+                             (DATEDIFF(LEAST(p.fecha_fin, CURDATE()), p.fecha_inicio) + 1)
+                    END
+                ) as adherencia_promedio')
+            ])
+            ->where('p.fecha_fin', '>=', now())
+            ->groupBy('p.id_paciente')
+            ->get()
+            ->avg('adherencia_promedio');
 
-        $adherenciaTotal = 0;
-        foreach ($planesActivos as $plan) {
-            $adherenciaTotal += $this->calcularAdherenciaPaciente($plan->id_paciente, $plan);
-        }
-
-        return round($adherenciaTotal / $planesActivos->count(), 2);
+        return round($adherencia ?? 0, 2);
     }
 
     /**
@@ -226,77 +235,80 @@ class DashboardController extends Controller
     }
 
     /**
-     * Obtener top 5 pacientes con mejor progreso
+     * Obtener top 5 pacientes con mejor progreso (optimizado)
      */
     private function getTopPacientes()
     {
-        $pacientes = User::where('role', 'paciente')
-            ->with(['paciente', 'evaluaciones'])
+        // Consulta optimizada con subqueries para evitar N+1
+        $topPacientes = DB::table('users')
+            ->join('evaluaciones as e1', 'users.id', '=', 'e1.id_paciente')
+            ->join('evaluaciones as e2', function($join) {
+                $join->on('users.id', '=', 'e2.id_paciente')
+                     ->whereRaw('e2.fecha = (SELECT MAX(fecha) FROM evaluaciones WHERE id_paciente = users.id)');
+            })
+            ->join('evaluaciones as e3', function($join) {
+                $join->on('users.id', '=', 'e3.id_paciente')
+                     ->whereRaw('e3.fecha = (SELECT MIN(fecha) FROM evaluaciones WHERE id_paciente = users.id)');
+            })
+            ->select([
+                'users.id',
+                'users.name as nombre',
+                'e3.peso_kg as peso_inicial',
+                'e2.peso_kg as peso_actual',
+                DB::raw('ROUND(e3.peso_kg - e2.peso_kg, 2) as perdida_peso'),
+                DB::raw('COUNT(DISTINCT e1.id_evaluacion) as evaluaciones')
+            ])
+            ->where('users.role', 'paciente')
+            ->whereNotNull('e2.peso_kg')
+            ->whereNotNull('e3.peso_kg')
+            ->groupBy('users.id', 'users.name', 'e3.peso_kg', 'e2.peso_kg')
+            ->having('evaluaciones', '>=', 2)
+            ->having('perdida_peso', '>', 0)
+            ->orderByDesc('perdida_peso')
+            ->limit(5)
             ->get();
 
-        $pacientesConProgreso = $pacientes->map(function($user) {
-            $evaluaciones = $user->evaluaciones()->orderBy('fecha')->get();
-            
-            if ($evaluaciones->count() < 2) {
-                return null;
-            }
-
-            $primera = $evaluaciones->first();
-            $ultima = $evaluaciones->last();
-
-            $perdidaPeso = $primera->peso_kg - $ultima->peso_kg;
-
+        return $topPacientes->map(function($paciente) {
             return [
-                'id' => $user->id,
-                'nombre' => $user->name,
-                'perdida_peso' => round($perdidaPeso, 2),
-                'peso_inicial' => $primera->peso_kg,
-                'peso_actual' => $ultima->peso_kg,
-                'evaluaciones' => $evaluaciones->count()
+                'id' => $paciente->id,
+                'nombre' => $paciente->nombre,
+                'perdida_peso' => (float) $paciente->perdida_peso,
+                'peso_inicial' => (float) $paciente->peso_inicial,
+                'peso_actual' => (float) $paciente->peso_actual,
+                'evaluaciones' => (int) $paciente->evaluaciones
             ];
-        })->filter()->sortByDesc('perdida_peso')->take(5)->values();
-
-        return $pacientesConProgreso;
+        });
     }
 
     /**
-     * Obtener distribución de IMC
+     * Obtener distribución de IMC (optimizado)
      */
     private function getDistribucionIMC()
     {
-        // Obtener última evaluación de cada paciente
-        $ultimasEvaluaciones = Evaluacion::select('id_paciente', DB::raw('MAX(fecha) as ultima_fecha'))
-            ->groupBy('id_paciente')
-            ->get();
+        // Consulta optimizada con una sola query
+        $distribucion = DB::table('evaluaciones as e1')
+            ->join(DB::raw('(SELECT id_paciente, MAX(fecha) as max_fecha FROM evaluaciones GROUP BY id_paciente) as e2'), 
+                   function($join) {
+                       $join->on('e1.id_paciente', '=', 'e2.id_paciente')
+                            ->on('e1.fecha', '=', 'e2.max_fecha');
+                   })
+            ->select([
+                DB::raw('SUM(CASE WHEN (peso_kg / (altura_m * altura_m)) < 18.5 THEN 1 ELSE 0 END) as bajo_peso'),
+                DB::raw('SUM(CASE WHEN (peso_kg / (altura_m * altura_m)) >= 18.5 AND (peso_kg / (altura_m * altura_m)) < 25 THEN 1 ELSE 0 END) as normal'),
+                DB::raw('SUM(CASE WHEN (peso_kg / (altura_m * altura_m)) >= 25 AND (peso_kg / (altura_m * altura_m)) < 30 THEN 1 ELSE 0 END) as sobrepeso'),
+                DB::raw('SUM(CASE WHEN (peso_kg / (altura_m * altura_m)) >= 30 THEN 1 ELSE 0 END) as obesidad')
+            ])
+            ->whereNotNull('peso_kg')
+            ->whereNotNull('altura_m')
+            ->where('altura_m', '>', 0)
+            ->first();
 
-        $distribucion = [
-            'bajo_peso' => 0,
-            'normal' => 0,
-            'sobrepeso' => 0,
-            'obesidad' => 0
+        return [
+            'bajo_peso' => (int) ($distribucion->bajo_peso ?? 0),
+            'normal' => (int) ($distribucion->normal ?? 0),
+            'sobrepeso' => (int) ($distribucion->sobrepeso ?? 0),
+            'obesidad' => (int) ($distribucion->obesidad ?? 0)
         ];
-
-        foreach ($ultimasEvaluaciones as $eval) {
-            $evaluacion = Evaluacion::where('id_paciente', $eval->id_paciente)
-                ->where('fecha', $eval->ultima_fecha)
-                ->first();
-
-            if ($evaluacion && $evaluacion->peso_kg && $evaluacion->altura_m) {
-                $imc = $evaluacion->peso_kg / ($evaluacion->altura_m ** 2);
-
-                if ($imc < 18.5) {
-                    $distribucion['bajo_peso']++;
-                } elseif ($imc < 25) {
-                    $distribucion['normal']++;
-                } elseif ($imc < 30) {
-                    $distribucion['sobrepeso']++;
-                } else {
-                    $distribucion['obesidad']++;
-                }
-            }
-        }
-
-        return $distribucion;
     }
 
     /**

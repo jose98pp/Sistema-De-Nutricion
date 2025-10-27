@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
+import { useToast } from '../../components/Toast';
 import api from '../../config/api';
 import { Calendar, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Download, Printer } from 'lucide-react';
 
@@ -8,17 +9,21 @@ const MiMenuSemanal = () => {
     const [menuSemanal, setMenuSemanal] = useState(null);
     const [loading, setLoading] = useState(true);
     const [fechaInicio, setFechaInicio] = useState(null);
-    const [comidaExpandida, setComidaExpandida] = useState({});
+    const [comidasExpandidas, setComidasExpandidas] = useState(new Set());
+    const toast = useToast();
+
+    // Función para obtener el inicio de semana (lunes)
+    const getInicioSemana = useCallback((fecha = new Date()) => {
+        const d = new Date(fecha);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Ajustar para que lunes sea el primer día
+        d.setDate(diff);
+        return d.toISOString().split('T')[0];
+    }, []);
 
     useEffect(() => {
-        // Inicializar con inicio de semana actual
-        const hoy = new Date();
-        const inicioSemana = new Date(hoy);
-        const dia = hoy.getDay();
-        const diff = hoy.getDate() - dia + (dia === 0 ? -6 : 1); // Lunes
-        inicioSemana.setDate(diff);
-        setFechaInicio(inicioSemana.toISOString().split('T')[0]);
-    }, []);
+        setFechaInicio(getInicioSemana());
+    }, [getInicioSemana]);
 
     useEffect(() => {
         if (fechaInicio) {
@@ -26,32 +31,42 @@ const MiMenuSemanal = () => {
         }
     }, [fechaInicio]);
 
-    const fetchMenuSemanal = async () => {
+    const fetchMenuSemanal = useCallback(async () => {
+        if (!fechaInicio) return;
+        
         try {
+            setLoading(true);
             const response = await api.get('/mi-menu-semanal', {
                 params: { fecha_inicio: fechaInicio }
             });
             setMenuSemanal(response.data.data);
         } catch (error) {
             console.error('Error al cargar menú semanal:', error);
+            toast.error('Error al cargar el menú semanal');
         } finally {
             setLoading(false);
         }
-    };
+    }, [fechaInicio, toast]);
 
-    const cambiarSemana = (direccion) => {
+    const cambiarSemana = useCallback((direccion) => {
         const nuevaFecha = new Date(fechaInicio);
         nuevaFecha.setDate(nuevaFecha.getDate() + (direccion === 'anterior' ? -7 : 7));
         setFechaInicio(nuevaFecha.toISOString().split('T')[0]);
-    };
+        setComidasExpandidas(new Set()); // Limpiar expansiones al cambiar semana
+    }, [fechaInicio]);
 
-    const toggleComida = (diaIndex, comidaIndex) => {
+    const toggleComida = useCallback((diaIndex, comidaIndex) => {
         const key = `${diaIndex}-${comidaIndex}`;
-        setComidaExpandida(prev => ({
-            ...prev,
-            [key]: !prev[key]
-        }));
-    };
+        setComidasExpandidas(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(key)) {
+                newSet.delete(key);
+            } else {
+                newSet.add(key);
+            }
+            return newSet;
+        });
+    }, []);
 
     const formatFecha = (fecha) => {
         return new Date(fecha).toLocaleDateString('es-ES', {
@@ -215,7 +230,7 @@ const MiMenuSemanal = () => {
                             <div className="space-y-2">
                                 {dia.comidas && dia.comidas.map((comida, comidaIndex) => {
                                     const key = `${diaIndex}-${comidaIndex}`;
-                                    const expandido = comidaExpandida[key];
+                                    const expandido = comidasExpandidas.has(key);
                                     
                                     return (
                                         <div key={comidaIndex} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden print:break-inside-avoid">
@@ -236,7 +251,7 @@ const MiMenuSemanal = () => {
                                                     </div>
                                                 </div>
                                                 <div className="print:hidden">
-                                                    {expandido ? (
+                                                    {comidasExpandidas.has(key) ? (
                                                         <ChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                                                     ) : (
                                                         <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-400" />
@@ -245,7 +260,7 @@ const MiMenuSemanal = () => {
                                             </button>
 
                                             {/* Contenido de Comida (expandible) */}
-                                            {(expandido || window.matchMedia('print').matches) && (
+                                            {(comidasExpandidas.has(key) || window.matchMedia('print').matches) && (
                                                 <div className="p-3 bg-white dark:bg-gray-900 text-sm">
                                                     {comida.nombre && (
                                                         <p className="font-medium text-gray-800 dark:text-gray-100 mb-2">

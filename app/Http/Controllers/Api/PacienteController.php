@@ -59,9 +59,11 @@ class PacienteController extends Controller
             'genero' => 'required|in:M,F,Otro',
             'email' => 'required|email|unique:pacientes,email|unique:users,email',
             'telefono' => 'nullable|string|max:20',
-            'peso_inicial' => 'nullable|numeric|min:20|max:300',
-            'estatura' => 'nullable|numeric|min:0.5|max:2.5',
-            'alergias' => 'nullable|string',
+            'peso_inicial' => 'nullable|numeric|min:10|max:500', // Rango más amplio
+            'estatura' => 'nullable|numeric|min:0.3|max:3.0',   // Rango más amplio
+            'peso_objetivo_kg' => 'nullable|numeric|min:10|max:500',
+            'alergias' => 'nullable|string|max:1000',
+            'restricciones_alimentarias' => 'nullable|string|max:1000',
             'password' => 'nullable|string|min:8',
         ]);
 
@@ -124,9 +126,11 @@ class PacienteController extends Controller
             'genero' => 'sometimes|in:M,F,Otro',
             'email' => 'sometimes|email|unique:pacientes,email,' . $id . ',id_paciente',
             'telefono' => 'nullable|string|max:20',
-            'peso_inicial' => 'nullable|numeric|min:20|max:300',
-            'estatura' => 'nullable|numeric|min:0.5|max:2.5',
-            'alergias' => 'nullable|string',
+            'peso_inicial' => 'nullable|numeric|min:10|max:500', // Rango más amplio
+            'estatura' => 'nullable|numeric|min:0.3|max:3.0',   // Rango más amplio
+            'peso_objetivo_kg' => 'nullable|numeric|min:10|max:500',
+            'alergias' => 'nullable|string|max:1000',
+            'restricciones_alimentarias' => 'nullable|string|max:1000',
         ]);
 
         $paciente = Paciente::findOrFail($id);

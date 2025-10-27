@@ -16,9 +16,22 @@ class PlanAlimentacionController extends Controller
      */
     public function index(Request $request)
     {
-        $query = PlanAlimentacion::with(['paciente', 'dias.comidas.alimentos']);
+        $query = PlanAlimentacion::with(['paciente.user', 'dias.comidas.alimentos']);
         
-        // Filtrar por paciente
+        // Búsqueda por nombre, apellido, correo o celular del paciente
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->whereHas('paciente', function($q) use ($search) {
+                $q->where('nombre', 'LIKE', "%{$search}%")
+                  ->orWhere('apellido', 'LIKE', "%{$search}%")
+                  ->orWhere('celular', 'LIKE', "%{$search}%")
+                  ->orWhereHas('user', function($userQuery) use ($search) {
+                      $userQuery->where('email', 'LIKE', "%{$search}%");
+                  });
+            });
+        }
+        
+        // Filtrar por paciente ID específico
         if ($request->has('paciente_id')) {
             $query->where('id_paciente', $request->paciente_id);
         }

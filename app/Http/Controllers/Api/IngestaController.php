@@ -53,17 +53,30 @@ class IngestaController extends Controller
         $request->validate([
             'fecha_hora' => 'required|date|before_or_equal:now',
             'id_paciente' => 'required|exists:pacientes,id_paciente',
+            'tipo_registro' => 'nullable|in:plan,libre',
+            'id_comida_plan' => 'nullable|exists:comidas,id_comida',
             'alimentos' => 'required|array|min:1',
             'alimentos.*.id_alimento' => 'required|exists:alimentos,id_alimento',
             'alimentos.*.cantidad_gramos' => 'required|numeric|min:0.01',
+            'observaciones' => 'nullable|string|max:500',
         ]);
 
         DB::beginTransaction();
         try {
+            // Preparar observaciones según el tipo de registro
+            $observaciones = $request->observaciones;
+            if ($request->tipo_registro === 'plan' && $request->id_comida_plan) {
+                $comida = \App\Models\Comida::find($request->id_comida_plan);
+                $observaciones = "Registrado desde el plan: " . ($comida->nombre ?? 'Comida del plan');
+            } elseif ($request->tipo_registro === 'libre') {
+                $observaciones = $observaciones ?? 'Alimentos adicionales registrados libremente';
+            }
+
             // Crear la ingesta
             $ingesta = Ingesta::create([
                 'fecha_hora' => $request->fecha_hora,
                 'id_paciente' => $request->id_paciente,
+                'observaciones' => $observaciones,
             ]);
 
             // Adjuntar alimentos
@@ -301,54 +314,74 @@ class IngestaController extends Controller
     public function progresoDelDia(Request $request)
     {
         $user = $request->user();
+        
+        // Obtener paciente - puede estar en user->paciente o buscar por user_id
         $paciente = $user->paciente;
+        if (!$paciente) {
+            $paciente = \App\Models\Paciente::where('user_id', $user->id)->first();
+        }
 
         if (!$paciente) {
             return response()->json([
                 'success' => false,
-                'message' => 'No eres un paciente registrado'
+                'message' => 'No eres un paciente registrado',
+                'debug' => [
+                    'user_id' => $user->id,
+                    'user_role' => $user->role
+                ]
             ], 403);
         }
 
         $fecha = $request->get('fecha', Carbon::today()->toDateString());
+        $fechaCarbon = Carbon::parse($fecha);
+        $diaSemana = strtoupper($fechaCarbon->locale('es')->dayName);
 
-        // Obtener plan activo
-        $plan = \App\Models\PlanAlimentacion::whereHas('contrato', function($query) use ($paciente) {
-            $query->where('id_paciente', $paciente->id_paciente)
-                  ->where('estado', 'ACTIVO');
-        })->where('estado', 'ACTIVO')->first();
+        // Obtener plan activo más reciente
+        $plan = \App\Models\PlanAlimentacion::where('id_paciente', $paciente->id_paciente)
+            ->where('estado', 'ACTIVO')
+            ->orderBy('created_at', 'desc')
+            ->first();
 
         if (!$plan) {
             return response()->json([
                 'success' => false,
-                'message' => 'No tienes un plan activo'
+                'message' => 'No tienes un plan activo',
+                'debug' => [
+                    'paciente_id' => $paciente->id_paciente,
+                    'fecha' => $fecha
+                ]
             ], 404);
         }
 
-        // Obtener comidas del plan para este día
+        // Obtener comidas del plan para este día de la semana
+        // Primero intentar por fecha exacta, luego por día de la semana
         $dia = $plan->planDias()
-            ->where('fecha', $fecha)
+            ->whereDate('fecha', $fecha)
             ->with(['comidas' => function($query) {
                 $query->orderBy('hora_recomendada');
             }, 'comidas.alimentos'])
             ->first();
 
-        // Obtener ingestas registradas hoy
-        $ingestas = Ingesta::where('id_paciente', $paciente->id_paciente)
-            ->whereDate('fecha_hora', $fecha)
-            ->with('alimentos')
-            ->get();
+        // Si no encuentra por fecha exacta, buscar por día de la semana
+        if (!$dia) {
+            $dia = $plan->planDias()
+                ->where('dia_semana', $diaSemana)
+                ->with(['comidas' => function($query) {
+                    $query->orderBy('hora_recomendada');
+                }, 'comidas.alimentos'])
+                ->first();
+        }
 
-        // Calcular totales del plan
-        $totalesPlan = ['calorias' => 0, 'proteinas' => 0, 'carbohidratos' => 0, 'grasas' => 0];
+        // Si no hay día específico, crear comidas genéricas
         $comidasPlan = [];
+        $totalesPlan = ['calorias' => 0, 'proteinas' => 0, 'carbohidratos' => 0, 'grasas' => 0];
 
-        if ($dia) {
+        if ($dia && $dia->comidas) {
             foreach ($dia->comidas as $comida) {
                 $totalesComida = ['calorias' => 0, 'proteinas' => 0, 'carbohidratos' => 0, 'grasas' => 0];
                 
                 foreach ($comida->alimentos as $alimento) {
-                    $cantidad = $alimento->pivot->cantidad_gramos ?? 0;
+                    $cantidad = $alimento->pivot->cantidad_gramos ?? 100;
                     $factor = $cantidad / 100;
                     
                     $totalesComida['calorias'] += ($alimento->calorias_por_100g ?? 0) * $factor;
@@ -362,29 +395,63 @@ class IngestaController extends Controller
                 $totalesPlan['carbohidratos'] += $totalesComida['carbohidratos'];
                 $totalesPlan['grasas'] += $totalesComida['grasas'];
 
-                // Verificar si esta comida ya fue consumida
-                $consumida = $ingestas->first(function($ingesta) use ($comida) {
-                    return stripos($ingesta->observaciones ?? '', "plan: {$comida->nombre}") !== false 
-                           || $ingesta->tipo_comida === $comida->tipo_comida;
-                });
-
                 $comidasPlan[] = [
                     'id_comida' => $comida->id_comida,
-                    'tipo_comida' => $comida->tipo_comida,
-                    'hora_recomendada' => $comida->hora_recomendada,
-                    'nombre' => $comida->nombre,
-                    'alimentos' => $comida->alimentos,
+                    'tipo_comida' => $comida->tipo_comida ?? 'COMIDA',
+                    'hora_recomendada' => $comida->hora_recomendada ?? '12:00',
+                    'nombre' => $comida->nombre ?? 'Comida del plan',
+                    'alimentos' => $comida->alimentos->map(function($alimento) {
+                        return [
+                            'id_alimento' => $alimento->id_alimento,
+                            'nombre' => $alimento->nombre,
+                            'pivot' => [
+                                'cantidad_gramos' => $alimento->pivot->cantidad_gramos ?? 100
+                            ]
+                        ];
+                    }),
                     'totales' => [
                         'calorias' => round($totalesComida['calorias'], 0),
                         'proteinas' => round($totalesComida['proteinas'], 1),
                         'carbohidratos' => round($totalesComida['carbohidratos'], 1),
                         'grasas' => round($totalesComida['grasas'], 1)
                     ],
-                    'consumida' => $consumida ? true : false,
-                    'id_ingesta' => $consumida ? $consumida->id_ingesta : null
+                    'consumida' => false,
+                    'id_ingesta' => null
+                ];
+            }
+        } else {
+            // Si no hay comidas específicas, crear comidas genéricas
+            $comidasGenericas = [
+                ['tipo' => 'DESAYUNO', 'hora' => '08:00', 'nombre' => 'Desayuno'],
+                ['tipo' => 'ALMUERZO', 'hora' => '13:00', 'nombre' => 'Almuerzo'],
+                ['tipo' => 'CENA', 'hora' => '19:00', 'nombre' => 'Cena'],
+                ['tipo' => 'SNACK', 'hora' => '16:00', 'nombre' => 'Snack']
+            ];
+
+            foreach ($comidasGenericas as $index => $comidaGen) {
+                $comidasPlan[] = [
+                    'id_comida' => $index + 1,
+                    'tipo_comida' => $comidaGen['tipo'],
+                    'hora_recomendada' => $comidaGen['hora'],
+                    'nombre' => $comidaGen['nombre'],
+                    'alimentos' => [],
+                    'totales' => [
+                        'calorias' => 0,
+                        'proteinas' => 0,
+                        'carbohidratos' => 0,
+                        'grasas' => 0
+                    ],
+                    'consumida' => false,
+                    'id_ingesta' => null
                 ];
             }
         }
+
+        // Obtener ingestas registradas hoy
+        $ingestas = Ingesta::where('id_paciente', $paciente->id_paciente)
+            ->whereDate('fecha_hora', $fecha)
+            ->with('alimentos')
+            ->get();
 
         // Calcular totales consumidos
         $totalesConsumidos = ['calorias' => 0, 'proteinas' => 0, 'carbohidratos' => 0, 'grasas' => 0];
@@ -410,8 +477,8 @@ class IngestaController extends Controller
                 'fecha' => $fecha,
                 'plan' => [
                     'id_plan' => $plan->id_plan,
-                    'nombre_plan' => $plan->nombre_plan,
-                    'calorias_objetivo' => $plan->calorias_objetivo
+                    'nombre_plan' => $plan->nombre ?? 'Plan Alimentario',
+                    'calorias_objetivo' => $plan->calorias_objetivo ?? 2000
                 ],
                 'comidas_plan' => $comidasPlan,
                 'totales_plan' => [

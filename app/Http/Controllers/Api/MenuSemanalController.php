@@ -34,7 +34,7 @@ class MenuSemanalController extends Controller
             $query->where('id_paciente', $paciente->id_paciente)
                   ->where('estado', 'ACTIVO');
         })->where('estado', 'ACTIVO')
-          ->with(['planDias.comidas.alimentos'])
+          ->with(['dias.comidas.alimentos'])
           ->first();
 
         if (!$plan) {
@@ -45,7 +45,7 @@ class MenuSemanalController extends Controller
         }
 
         // Obtener días del plan que caen en esta semana
-        $diasSemana = $plan->planDias()
+        $diasSemana = $plan->dias()
             ->whereBetween('fecha', [$fechaInicio, $fechaFin])
             ->with(['comidas' => function($query) {
                 $query->orderBy('hora_recomendada');
@@ -183,7 +183,7 @@ class MenuSemanalController extends Controller
             $query->where('id_paciente', $paciente->id_paciente)
                   ->where('estado', 'ACTIVO');
         })->where('estado', 'ACTIVO')
-          ->with(['planDias.comidas.alimentos'])
+          ->with(['dias.comidas.alimentos'])
           ->first();
 
         if (!$plan) {
@@ -194,7 +194,7 @@ class MenuSemanalController extends Controller
         }
 
         // Obtener día específico
-        $dia = $plan->planDias()
+        $dia = $plan->dias()
             ->where('fecha', $fecha->toDateString())
             ->with(['comidas' => function($query) {
                 $query->orderBy('hora_recomendada');

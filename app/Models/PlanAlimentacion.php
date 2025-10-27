@@ -15,11 +15,16 @@ class PlanAlimentacion extends Model
 
     protected $fillable = [
         'id_contrato',
+        'id_paciente',
+        'id_nutricionista',
         'nombre',
+        'nombre_plan',
         'descripcion',
         'fecha_inicio',
         'fecha_fin',
-        'id_paciente',
+        'objetivo',
+        'calorias_objetivo',
+        'estado',
     ];
 
     protected $casts = [
@@ -33,12 +38,22 @@ class PlanAlimentacion extends Model
         return $this->belongsTo(Paciente::class, 'id_paciente');
     }
 
+    public function nutricionista()
+    {
+        return $this->belongsTo(Nutricionista::class, 'id_nutricionista');
+    }
+
     public function contrato()
     {
         return $this->belongsTo(Contrato::class, 'id_contrato');
     }
 
     public function dias()
+    {
+        return $this->hasMany(PlanDia::class, 'id_plan');
+    }
+
+    public function planDias()
     {
         return $this->hasMany(PlanDia::class, 'id_plan');
     }

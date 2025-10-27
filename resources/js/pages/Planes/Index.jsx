@@ -8,16 +8,23 @@ const PlanesIndex = () => {
     const { user, isPaciente } = useAuth();
     const [planes, setPlanes] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
     const [pacienteId, setPacienteId] = useState('');
     const [soloActivos, setSoloActivos] = useState(false);
 
     useEffect(() => {
-        fetchPlanes();
-    }, [pacienteId, soloActivos]);
+        const delayDebounceFn = setTimeout(() => {
+            fetchPlanes();
+        }, 500); // Debounce de 500ms para la búsqueda
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchTerm, pacienteId, soloActivos]);
 
     const fetchPlanes = async () => {
         try {
+            setLoading(true);
             const params = {};
+            if (searchTerm) params.search = searchTerm;
             if (pacienteId) params.paciente_id = pacienteId;
             if (soloActivos) params.activo = 1;
 
@@ -71,31 +78,42 @@ const PlanesIndex = () => {
                 </div>
 
                 <div className="card">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Filtrar por Paciente ID
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                🔍 Buscar Paciente
                             </label>
                             <input
-                                type="number"
-                                value={pacienteId}
-                                onChange={(e) => setPacienteId(e.target.value)}
-                                className="input-field"
-                                placeholder="ID del paciente..."
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="input-field w-full"
+                                placeholder="Buscar por nombre, apellido, correo o celular..."
                             />
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Ejemplo: Juan, García, juan@email.com, 555-1234
+                            </p>
                         </div>
-                        <div className="flex items-end">
-                            <label className="flex items-center gap-2 cursor-pointer">
+                        <div className="flex flex-col justify-end">
+                            <label className="flex items-center gap-2 cursor-pointer mb-3">
                                 <input
                                     type="checkbox"
                                     checked={soloActivos}
                                     onChange={(e) => setSoloActivos(e.target.checked)}
-                                    className="w-4 h-4 text-primary-600"
+                                    className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
                                 />
-                                <span className="text-sm font-medium text-gray-700">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Solo planes activos
                                 </span>
                             </label>
+                            {searchTerm && (
+                                <button
+                                    onClick={() => setSearchTerm('')}
+                                    className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                                >
+                                    Limpiar búsqueda
+                                </button>
+                            )}
                         </div>
                     </div>
 

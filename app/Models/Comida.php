@@ -15,6 +15,10 @@ class Comida extends Model
     protected $fillable = [
         'id_dia',
         'tipo_comida',
+        'hora_recomendada',
+        'nombre',
+        'descripcion',
+        'instrucciones',
         'orden',
     ];
 

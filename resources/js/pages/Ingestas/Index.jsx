@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
+import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import api from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -11,6 +13,8 @@ const IngestasIndex = () => {
     const [fechaInicio, setFechaInicio] = useState('');
     const [fechaFin, setFechaFin] = useState('');
     const [pacienteId, setPacienteId] = useState('');
+    const toast = useToast();
+    const confirm = useConfirm();
 
     useEffect(() => {
         // Establecer fecha por defecto: últimos 7 días
@@ -46,47 +50,67 @@ const IngestasIndex = () => {
     };
 
     const handleDelete = async (id) => {
-        if (!confirm('¿Estás seguro de eliminar esta ingesta?')) return;
+        const confirmed = await confirm({
+            title: 'Eliminar Ingesta',
+            message: '¿Estás seguro de que deseas eliminar esta ingesta? Esta acción no se puede deshacer.',
+            confirmText: 'Sí, eliminar',
+            cancelText: 'Cancelar',
+            type: 'danger'
+        });
+
+        if (!confirmed) return;
 
         try {
             await api.delete(`/ingestas/${id}`);
             setIngestas(ingestas.filter(i => i.id_ingesta !== id));
+            toast.success('Ingesta eliminada exitosamente');
         } catch (error) {
-            alert('Error al eliminar ingesta');
+            const errorMessage = error.response?.data?.message || 'Error al eliminar ingesta';
+            toast.error(errorMessage);
         }
     };
 
-    const calcularTotales = (ingesta) => {
-        if (!ingesta.alimentos) return { calorias: 0, proteinas: 0, carbohidratos: 0, grasas: 0 };
+    // Memoizar el cálculo de totales para evitar recálculos innecesarios
+    const calcularTotales = useMemo(() => {
+        return (ingesta) => {
+            if (!ingesta.alimentos) return { calorias: 0, proteinas: 0, carbohidratos: 0, grasas: 0 };
 
-        return ingesta.alimentos.reduce((totales, alimento) => {
-            const cantidad = alimento.pivot?.cantidad_gramos || 0;
-            return {
-                calorias: totales.calorias + (alimento.calorias_por_100g * cantidad / 100),
-                proteinas: totales.proteinas + (alimento.proteinas_por_100g * cantidad / 100),
-                carbohidratos: totales.carbohidratos + (alimento.carbohidratos_por_100g * cantidad / 100),
-                grasas: totales.grasas + (alimento.grasas_por_100g * cantidad / 100),
-            };
-        }, { calorias: 0, proteinas: 0, carbohidratos: 0, grasas: 0 });
-    };
+            return ingesta.alimentos.reduce((totales, alimento) => {
+                const cantidad = alimento.pivot?.cantidad_gramos || 0;
+                return {
+                    calorias: totales.calorias + (alimento.calorias_por_100g * cantidad / 100),
+                    proteinas: totales.proteinas + (alimento.proteinas_por_100g * cantidad / 100),
+                    carbohidratos: totales.carbohidratos + (alimento.carbohidratos_por_100g * cantidad / 100),
+                    grasas: totales.grasas + (alimento.grasas_por_100g * cantidad / 100),
+                };
+            }, { calorias: 0, proteinas: 0, carbohidratos: 0, grasas: 0 });
+        };
+    }, []);
 
-    // Agrupar ingestas por día
-    const ingestasPorDia = ingestas.reduce((grupos, ingesta) => {
-        const fecha = new Date(ingesta.fecha_hora).toLocaleDateString('es-ES');
-        if (!grupos[fecha]) {
-            grupos[fecha] = [];
-        }
-        grupos[fecha].push(ingesta);
-        return grupos;
-    }, {});
+    // Memoizar el agrupamiento por día
+    const ingestasPorDia = useMemo(() => {
+        return ingestas.reduce((grupos, ingesta) => {
+            const fecha = new Date(ingesta.fecha_hora).toLocaleDateString('es-ES');
+            if (!grupos[fecha]) {
+                grupos[fecha] = [];
+            }
+            grupos[fecha].push(ingesta);
+            return grupos;
+        }, {});
+    }, [ingestas]);
 
     return (
         <Layout>
             <div className="space-y-6">
                 <div className="flex justify-between items-center">
                     <div>
-                        <h2 className="text-3xl font-bold text-gray-800">Registro de Ingestas</h2>
-                        <p className="text-gray-600 mt-1">Historial de comidas y nutrición</p>
+                        <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Registro de Ingestas</h2>
+                        <p className="text-gray-600 dark:text-gray-400 mt-1">Historial de comidas y nutrición</p>
+                        {isPaciente() && (
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                💡 Tip: Usa <Link to="/mis-comidas-hoy" className="text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium">Mis Comidas de Hoy</Link> para registro rápido desde tu plan
+                            </p>
+                        )}
                     </div>
                     <Link to="/ingestas/nueva" className="btn-primary">
                         + Registrar Ingesta

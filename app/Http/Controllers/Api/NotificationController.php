@@ -82,11 +82,16 @@ class NotificationController extends Controller
      */
     public function countUnread(Request $request)
     {
-        $count = Notification::where('id_usuario', $request->user()->id)
-            ->noLeidas()
-            ->count();
+        try {
+            $count = Notification::where('id_usuario', $request->user()->id)
+                ->where('leida', false)
+                ->count();
 
-        return response()->json(['count' => $count]);
+            return response()->json(['count' => $count]);
+        } catch (\Exception $e) {
+            // Si hay error (tabla no existe, etc), devolver 0
+            return response()->json(['count' => 0]);
+        }
     }
 
     /**

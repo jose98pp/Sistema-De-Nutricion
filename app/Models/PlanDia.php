@@ -15,10 +15,15 @@ class PlanDia extends Model
     protected $fillable = [
         'id_plan',
         'dia_index',
+        'dia_numero',
+        'dia_semana',
+        'fecha',
     ];
 
     protected $casts = [
         'dia_index' => 'integer',
+        'dia_numero' => 'integer',
+        'fecha' => 'date',
     ];
 
     // Relaciones

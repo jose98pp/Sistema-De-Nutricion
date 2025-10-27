@@ -78,6 +78,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('planes', PlanAlimentacionController::class);
     Route::apiResource('ingestas', IngestaController::class);
     Route::get('ingestas/historial/{paciente_id}', [IngestaController::class, 'historial']);
+    
+    // Alimentos (lectura para todos, escritura solo admin/nutricionista)
+    Route::get('alimentos', [AlimentoController::class, 'index']);
+    Route::get('alimentos/{id}', [AlimentoController::class, 'show']);
 });
 
 // Rutas exclusivas para Admin y Nutricionista
@@ -89,8 +93,10 @@ Route::middleware(['auth:sanctum', 'role:admin,nutricionista'])->group(function 
     // Nutricionistas (solo admin puede gestionar)
     Route::apiResource('nutricionistas', NutricionistaController::class)->middleware('role:admin');
     
-    // Alimentos
-    Route::apiResource('alimentos', AlimentoController::class);
+    // Alimentos (solo escritura para admin/nutricionista)
+    Route::post('alimentos', [AlimentoController::class, 'store']);
+    Route::put('alimentos/{id}', [AlimentoController::class, 'update']);
+    Route::delete('alimentos/{id}', [AlimentoController::class, 'destroy']);
     
     // Servicios
     Route::apiResource('servicios', ServicioController::class);
