@@ -60,53 +60,49 @@ const IngestaForm = () => {
         try {
             console.log('=== VERIFICACIÓN DE USUARIO Y PLAN ===');
             console.log('Usuario actual:', user);
-            const idPacienteUsuario = user.paciente?.id_paciente || user.id_paciente;
-            console.log('ID Paciente del usuario:', idPacienteUsuario);
             
-            // Buscar planes solo del usuario actual
-            const response = await api.get('/planes', {
-                params: { 
-                    activo: 1,
-                    paciente_id: idPacienteUsuario  // Filtrar por paciente
+            // Si es paciente, usar endpoint específico
+            if (isPaciente()) {
+                const response = await api.get('/mi-plan');
+                const planActivo = response.data.data?.plan_activo;
+                
+                console.log('Plan activo del paciente:', planActivo);
+                
+                    if (planActivo) {
+                        console.log('✅ Plan activo del usuario encontrado');
+                        setPlanActual(planActivo);
+                        setPacienteId(planActivo.id_paciente);
+                    } else {
+                        console.log('❌ No se encontró un plan activo para este usuario');
+                        toast.info('ℹ️ No tienes un plan activo. Puedes registrar alimentos libremente.');
+                        setTipoRegistro('libre');
+                        setPlanActual(null);
+                    }
+                } else {
+                    // Si no es paciente (admin/nutricionista), usar endpoint normal
+                    const idPacienteUsuario = user.paciente?.id_paciente || user.id_paciente;
+                    const response = await api.get('/planes', {
+                        params: { 
+                            activo: 1,
+                            paciente_id: idPacienteUsuario
+                        }
+                    });
+                    const planes = response.data.data || response.data;
+                    const planActivo = planes.find(plan => {
+                        const hoy = new Date();
+                        const inicio = new Date(plan.fecha_inicio);
+                        const fin = new Date(plan.fecha_fin);
+                        return hoy >= inicio && hoy <= fin;
+                    });
+                    
+                    if (planActivo) {
+                        setPlanActual(planActivo);
+                        setPacienteId(planActivo.id_paciente);
+                    }
                 }
-            });
-            const planes = response.data.data || response.data;
-            
-            console.log('Planes recibidos del usuario:', planes);
-            console.log('Total de planes:', planes.length);
-            
-            // Buscar el plan que esté activo HOY
-            const planActivo = planes.find(plan => {
-                const hoy = new Date();
-                const inicio = new Date(plan.fecha_inicio);
-                const fin = new Date(plan.fecha_fin);
-                const estaEnRango = hoy >= inicio && hoy <= fin;
-                
-                console.log(`Plan ID ${plan.id_plan}:`, {
-                    nombre: plan.nombre || plan.nombre_plan,
-                    id_paciente: plan.id_paciente,
-                    fecha_inicio: plan.fecha_inicio,
-                    fecha_fin: plan.fecha_fin,
-                    estaEnRango
-                });
-                
-                return estaEnRango;
-            });
-            
-            console.log('Plan activo encontrado:', planActivo);
-            
-            if (planActivo) {
-                console.log('✅ Plan activo del usuario encontrado');
-                setPlanActual(planActivo);
-            } else {
-                console.log('❌ No se encontró un plan activo para este usuario');
-                toast.info('No tienes un plan alimenticio activo. Puedes registrar alimentos libremente.');
-                setTipoRegistro('libre');
-                setPlanActual(null);
-            }
         } catch (error) {
             console.error('Error al cargar plan actual:', error);
-            toast.error('Error al cargar tu plan alimenticio');
+            toast.error('❌ Error al cargar tu plan alimenticio');
             setTipoRegistro('libre');
         }
     };
@@ -116,8 +112,14 @@ const IngestaForm = () => {
         
         try {
             // Obtener el plan con sus días y comidas
-            const response = await api.get(`/planes/${planActual.id_plan}`);
-            const planDetalle = response.data.data || response.data;
+            // Si es paciente, usar el plan que ya tenemos (viene con días y comidas)
+            let planDetalle;
+            if (isPaciente()) {
+                planDetalle = planActual; // Ya viene con días y comidas de /mi-plan
+            } else {
+                const response = await api.get(`/planes/${planActual.id_plan}`);
+                planDetalle = response.data.data || response.data;
+            }
             
             console.log('Plan detalle:', planDetalle);
             
@@ -154,7 +156,7 @@ const IngestaForm = () => {
             }
         } catch (error) {
             console.error('Error al cargar comidas del plan:', error);
-            toast.error('Error al cargar las comidas de tu plan');
+            toast.error('❌ Error al cargar las comidas de tu plan');
             setComidasPlan([]);
         }
     };
@@ -165,7 +167,7 @@ const IngestaForm = () => {
             setAlimentos(response.data.data || response.data);
         } catch (error) {
             console.error('Error al cargar alimentos:', error);
-            toast.error('Error al cargar la lista de alimentos');
+            toast.error('❌ Error al cargar la lista de alimentos');
         }
     };
 
@@ -175,7 +177,7 @@ const IngestaForm = () => {
 
     const agregarAlimento = (alimento) => {
         if (alimentosSeleccionados.find(a => a.id_alimento === alimento.id_alimento)) {
-            alert('Este alimento ya está agregado');
+            toast.warning(`⚠️ ${alimento.nombre} ya está en la lista`);
             return;
         }
 
@@ -183,6 +185,7 @@ const IngestaForm = () => {
             ...alimento,
             cantidad_gramos: 100
         }]);
+        toast.success(`✅ ${alimento.nombre} agregado`);
         setBusqueda('');
     };
 
@@ -234,11 +237,17 @@ const IngestaForm = () => {
             };
 
             await api.post('/ingestas', data);
-            toast.success('Comida del plan registrada exitosamente');
+            toast.success(`✅ ${comida.nombre} registrada exitosamente`);
             navigate('/ingestas');
         } catch (error) {
             console.error('Error al registrar comida del plan:', error);
-            toast.error('Error al registrar la comida del plan');
+            if (error.response?.status === 400) {
+                toast.warning('⚠️ Esta comida ya fue registrada hoy');
+            } else if (error.response?.data?.message) {
+                toast.error(error.response.data.message);
+            } else {
+                toast.error('❌ Error al registrar la comida. Intenta nuevamente.');
+            }
         } finally {
             setLoading(false);
         }
@@ -248,7 +257,7 @@ const IngestaForm = () => {
         e.preventDefault();
 
         if (tipoRegistro === 'libre' && alimentosSeleccionados.length === 0) {
-            toast.warning('Debes agregar al menos un alimento');
+            toast.warning('⚠️ Debes agregar al menos un alimento a tu ingesta');
             return;
         }
 
@@ -257,12 +266,12 @@ const IngestaForm = () => {
         if (isPaciente()) {
             idPaciente = user.paciente?.id_paciente || user.id_paciente;
             if (!idPaciente) {
-                toast.error('Error: No se pudo obtener tu ID de paciente. Por favor contacta al administrador.');
+                toast.error('❌ No se pudo obtener tu ID de paciente. Contacta al administrador.');
                 return;
             }
         } else {
             if (!pacienteId) {
-                toast.warning('Debes seleccionar un paciente');
+                toast.warning('⚠️ Debes seleccionar un paciente');
                 return;
             }
             idPaciente = pacienteId;
@@ -282,17 +291,22 @@ const IngestaForm = () => {
             };
 
             await api.post('/ingestas', data);
-            toast.success('Ingesta registrada exitosamente');
+            
+            // Mensaje de éxito más descriptivo
+            const numAlimentos = alimentosSeleccionados.length;
+            const caloriasTotal = totales.calorias.toFixed(0);
+            toast.success(`✅ Ingesta registrada: ${numAlimentos} alimento${numAlimentos > 1 ? 's' : ''} (${caloriasTotal} kcal)`);
+            
             navigate('/ingestas');
         } catch (error) {
             console.error('Error completo:', error);
             if (error.response?.data?.errors) {
-                const errores = Object.values(error.response.data.errors).flat().join(', ');
-                toast.error(`Errores de validación: ${errores}`);
+                const errores = Object.values(error.response.data.errors).flat();
+                errores.forEach(err => toast.error(`❌ ${err}`));
             } else if (error.response?.data?.message) {
-                toast.error(`Error: ${error.response.data.message}`);
+                toast.error(`❌ ${error.response.data.message}`);
             } else {
-                toast.error('Error al registrar ingesta. Por favor intenta de nuevo.');
+                toast.error('❌ Error al registrar ingesta. Intenta nuevamente.');
             }
         } finally {
             setLoading(false);

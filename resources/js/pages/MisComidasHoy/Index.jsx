@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
+import { useToast } from '../../components/Toast';
 import api from '../../config/api';
 import { Check, Clock, Calendar, TrendingUp, AlertCircle } from 'lucide-react';
 
@@ -8,6 +9,7 @@ const MisComidasHoy = () => {
     const [progreso, setProgreso] = useState(null);
     const [loading, setLoading] = useState(true);
     const [registrando, setRegistrando] = useState(null);
+    const toast = useToast();
 
     useEffect(() => {
         fetchProgreso();
@@ -24,18 +26,34 @@ const MisComidasHoy = () => {
         }
     };
 
-    const handleRegistrarComida = async (id_comida) => {
+    const handleRegistrarComida = async (id_comida, nombreComida) => {
         if (registrando === id_comida) return;
         
         setRegistrando(id_comida);
         try {
-            await api.post('/registrar-rapido', { id_comida });
-            // Recargar progreso
+            const response = await api.post('/registrar-rapido', { id_comida });
+            
+            // Mostrar toast de éxito
+            toast.success(`✅ ${nombreComida} registrada exitosamente`);
+            
+            // Recargar progreso para actualizar el estado
             await fetchProgreso();
+            // No reseteamos registrando aquí, dejamos que el nuevo estado lo maneje
         } catch (error) {
             console.error('Error al registrar comida:', error);
-            alert('Error al registrar la comida');
-        } finally {
+            
+            // Manejar diferentes tipos de errores
+            if (error.response?.status === 400) {
+                // Ya fue registrada
+                toast.warning('⚠️ Ya registraste esta comida hoy');
+            } else if (error.response?.data?.message) {
+                // Error específico del backend
+                toast.error(error.response.data.message);
+            } else {
+                // Error genérico
+                toast.error('❌ Error al registrar la comida. Intenta nuevamente.');
+            }
+            
             setRegistrando(null);
         }
     };
@@ -259,37 +277,44 @@ const MisComidasHoy = () => {
                                         </div>
 
                                         {/* Botones de Acción */}
-                                        {!isCompletada && (
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => handleRegistrarComida(comida.id_comida)}
-                                                    disabled={isRegistrando}
-                                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                                                        isRegistrando 
-                                                            ? 'bg-gray-300 cursor-not-allowed' 
-                                                            : 'bg-green-600 hover:bg-green-700 text-white'
-                                                    }`}
-                                                >
-                                                    {isRegistrando ? (
-                                                        <>
-                                                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                                                            Registrando...
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Check className="w-4 h-4" />
-                                                            Ya comí esto
-                                                        </>
-                                                    )}
-                                                </button>
-                                                <Link
-                                                    to="/ingestas/nueva?tipo=libre"
-                                                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
-                                                >
-                                                    ➕ Agregar alimentos extra
-                                                </Link>
-                                            </div>
-                                        )}
+                                        <div className="flex gap-2">
+                                            {!isCompletada ? (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleRegistrarComida(comida.id_comida, comida.tipo_comida.replace(/_/g, ' '))}
+                                                        disabled={isRegistrando}
+                                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                                                            isRegistrando 
+                                                                ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white' 
+                                                                : 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg'
+                                                        }`}
+                                                    >
+                                                        {isRegistrando ? (
+                                                            <>
+                                                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                                                Registrando...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Check className="w-4 h-4" />
+                                                                Ya comí esto
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                    <Link
+                                                        to="/ingestas/nueva?tipo=libre"
+                                                        className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
+                                                    >
+                                                        ➕ Agregar alimentos extra
+                                                    </Link>
+                                                </>
+                                            ) : (
+                                                <div className="flex items-center gap-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg font-medium">
+                                                    <Check className="w-5 h-5" />
+                                                    Comida registrada
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

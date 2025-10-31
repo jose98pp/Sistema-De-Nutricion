@@ -15,6 +15,7 @@ class Ingesta extends Model
     protected $fillable = [
         'fecha_hora',
         'id_paciente',
+        'tipo_comida',
         'observaciones',
     ];
 

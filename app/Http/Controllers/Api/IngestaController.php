@@ -266,6 +266,19 @@ class IngestaController extends Controller
             // Obtener la comida del plan con sus alimentos
             $comida = \App\Models\Comida::with('alimentos')->findOrFail($request->id_comida);
 
+            // Verificar si ya existe una ingesta para este tipo de comida hoy
+            $ingestaExistente = Ingesta::where('id_paciente', $paciente->id_paciente)
+                ->where('tipo_comida', $comida->tipo_comida)
+                ->whereDate('fecha_hora', now()->toDateString())
+                ->first();
+
+            if ($ingestaExistente) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ya registraste esta comida hoy'
+                ], 400);
+            }
+
             // Crear la ingesta
             $ingesta = Ingesta::create([
                 'id_paciente' => $paciente->id_paciente,
@@ -395,9 +408,12 @@ class IngestaController extends Controller
                 $totalesPlan['carbohidratos'] += $totalesComida['carbohidratos'];
                 $totalesPlan['grasas'] += $totalesComida['grasas'];
 
+                $tipoComida = $comida->tipo_comida ?? 'COMIDA';
+                $consumida = isset($comidasConsumidas[$tipoComida]);
+                
                 $comidasPlan[] = [
                     'id_comida' => $comida->id_comida,
-                    'tipo_comida' => $comida->tipo_comida ?? 'COMIDA',
+                    'tipo_comida' => $tipoComida,
                     'hora_recomendada' => $comida->hora_recomendada ?? '12:00',
                     'nombre' => $comida->nombre ?? 'Comida del plan',
                     'alimentos' => $comida->alimentos->map(function($alimento) {
@@ -415,8 +431,8 @@ class IngestaController extends Controller
                         'carbohidratos' => round($totalesComida['carbohidratos'], 1),
                         'grasas' => round($totalesComida['grasas'], 1)
                     ],
-                    'consumida' => false,
-                    'id_ingesta' => null
+                    'consumida' => $consumida,
+                    'id_ingesta' => $consumida ? $comidasConsumidas[$tipoComida] : null
                 ];
             }
         } else {
@@ -452,6 +468,14 @@ class IngestaController extends Controller
             ->whereDate('fecha_hora', $fecha)
             ->with('alimentos')
             ->get();
+
+        // Crear un mapa de comidas consumidas por tipo_comida
+        $comidasConsumidas = [];
+        foreach ($ingestas as $ingesta) {
+            if ($ingesta->tipo_comida) {
+                $comidasConsumidas[$ingesta->tipo_comida] = $ingesta->id_ingesta;
+            }
+        }
 
         // Calcular totales consumidos
         $totalesConsumidos = ['calorias' => 0, 'proteinas' => 0, 'carbohidratos' => 0, 'grasas' => 0];

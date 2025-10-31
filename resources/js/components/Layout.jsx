@@ -274,48 +274,72 @@ const Layout = ({ children }) => {
                                 <NotificationBell />
 
                                 {/* Profile Menu */}
-                                <div className="relative">
+                                <div 
+                                    className="relative group"
+                                    onMouseEnter={() => setProfileMenuOpen(true)}
+                                    onMouseLeave={() => setProfileMenuOpen(false)}
+                                >
                                     <button
-                                        onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                                        className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                        className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 group-hover:shadow-md"
                                     >
-                                        <UserAvatar size="md" />
-                                        <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-300 hidden lg:block" />
+                                        <UserAvatar size="md" className="ring-2 ring-transparent group-hover:ring-primary-500 transition-all" />
+                                        <ChevronDown className={`w-4 h-4 text-gray-600 dark:text-gray-300 hidden lg:block transition-transform duration-200 ${profileMenuOpen ? 'rotate-180' : ''}`} />
                                     </button>
                                     
                                     {/* Dropdown */}
                                     {profileMenuOpen && (
-                                        <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 py-2 animate-fadeIn">
-                                            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                                                <p className="font-semibold text-gray-800 dark:text-gray-100">{user?.name}</p>
-                                                <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
+                                        <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 py-2 animate-fadeIn overflow-hidden">
+                                            {/* Header con foto y datos */}
+                                            <div className="px-4 py-4 bg-gradient-to-r from-primary-50 to-purple-50 dark:from-primary-900/20 dark:to-purple-900/20 border-b border-gray-200 dark:border-gray-700">
+                                                <div className="flex items-center gap-3">
+                                                    <UserAvatar size="lg" className="ring-2 ring-white dark:ring-gray-700 shadow-lg" />
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-bold text-gray-800 dark:text-gray-100 truncate">{user?.name}</p>
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
+                                                        <span className="inline-block mt-1 px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-medium rounded-full capitalize">
+                                                            {user?.role}
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <Link
-                                                to="/perfil"
-                                                onClick={() => setProfileMenuOpen(false)}
-                                                className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
-                                            >
-                                                <User className="w-4 h-4" />
-                                                <span>Mi Perfil</span>
-                                            </Link>
-                                            <Link
-                                                to="/configuracion"
-                                                onClick={() => setProfileMenuOpen(false)}
-                                                className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
-                                            >
-                                                <Settings className="w-4 h-4" />
-                                                <span>Configuración</span>
-                                            </Link>
+                                            
+                                            {/* Menu Items */}
+                                            <div className="py-2">
+                                                <Link
+                                                    to="/perfil"
+                                                    onClick={() => setProfileMenuOpen(false)}
+                                                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors group"
+                                                >
+                                                    <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg group-hover:scale-110 transition-transform">
+                                                        <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                                    </div>
+                                                    <span className="font-medium">Mi Perfil</span>
+                                                </Link>
+                                                <Link
+                                                    to="/configuracion"
+                                                    onClick={() => setProfileMenuOpen(false)}
+                                                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors group"
+                                                >
+                                                    <div className="p-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-lg group-hover:scale-110 transition-transform">
+                                                        <Settings className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                                    </div>
+                                                    <span className="font-medium">Configuración</span>
+                                                </Link>
+                                            </div>
+                                            
                                             <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+                                            
                                             <button
                                                 onClick={() => {
                                                     setProfileMenuOpen(false);
                                                     handleLogout();
                                                 }}
-                                                className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
+                                                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors group"
                                             >
-                                                <LogOut className="w-4 h-4" />
-                                                <span>Cerrar Sesión</span>
+                                                <div className="p-1.5 bg-red-100 dark:bg-red-900/30 rounded-lg group-hover:scale-110 transition-transform">
+                                                    <LogOut className="w-4 h-4" />
+                                                </div>
+                                                <span className="font-medium">Cerrar Sesión</span>
                                             </button>
                                         </div>
                                     )}
