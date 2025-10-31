@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import api from '../../config/api';
+import { 
+    Package, Calendar, MapPin, CheckCircle, Clock, 
+    XCircle, AlertCircle, Info, Utensils
+} from 'lucide-react';
 
 const MisEntregasIndex = () => {
     const [entregas, setEntregas] = useState([]);
@@ -68,12 +72,12 @@ const MisEntregasIndex = () => {
 
     const getEstadoIcon = (estado) => {
         const icons = {
-            'PROGRAMADA': '📅',
-            'PENDIENTE': '⏳',
-            'ENTREGADA': '✅',
-            'OMITIDA': '❌',
+            'PROGRAMADA': <Calendar size={16} />,
+            'PENDIENTE': <Clock size={16} />,
+            'ENTREGADA': <CheckCircle size={16} />,
+            'OMITIDA': <XCircle size={16} />,
         };
-        return icons[estado] || '📦';
+        return icons[estado] || <Package size={16} />;
     };
 
     const entregasAMostrar = view === 'proximas' ? proximasEntregas : entregas;
@@ -86,37 +90,57 @@ const MisEntregasIndex = () => {
     return (
         <Layout>
             <div className="space-y-6">
-                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-                    <div>
-                        <h2 className="text-3xl font-bold text-gray-800">Mis Entregas</h2>
-                        <p className="text-gray-600 mt-1">Programación de tus entregas de catering</p>
+                <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
+                        <Package className="w-8 h-8 text-white" />
                     </div>
-                    <Link to="/mi-calendario" className="btn-secondary">
-                        📆 Ver Calendario
+                    <div className="flex-1">
+                        <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Mis Entregas</h2>
+                        <p className="text-gray-600 dark:text-gray-400 mt-1">Programación de tus entregas de catering</p>
+                    </div>
+                    <Link to="/mi-calendario" className="btn-secondary flex items-center gap-2">
+                        <Calendar size={20} />
+                        Ver Calendario
                     </Link>
                 </div>
 
                 {/* Selector de Vista */}
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                     <button
                         onClick={() => setView('proximas')}
-                        className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
                             view === 'proximas' 
-                                ? 'bg-primary-500 text-white' 
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg scale-105' 
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                         }`}
                     >
-                        Próximas ({proximasEntregas.length})
+                        <Clock size={18} />
+                        Próximas
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                            view === 'proximas'
+                                ? 'bg-white/20'
+                                : 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                        }`}>
+                            {proximasEntregas.length}
+                        </span>
                     </button>
                     <button
                         onClick={() => setView('todas')}
-                        className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
                             view === 'todas' 
-                                ? 'bg-primary-500 text-white' 
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg scale-105' 
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                         }`}
                     >
-                        Todas ({entregas.length})
+                        <Package size={18} />
+                        Todas
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                            view === 'todas'
+                                ? 'bg-white/20'
+                                : 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                        }`}>
+                            {entregas.length}
+                        </span>
                     </button>
                 </div>
 
@@ -126,14 +150,16 @@ const MisEntregasIndex = () => {
                             <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent"></div>
                         </div>
                     ) : entregasAMostrar.length === 0 ? (
-                        <div className="text-center py-12 text-gray-500">
-                            <svg className="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                            </svg>
-                            <p className="mt-4 text-lg font-medium">
+                        <div className="text-center py-16">
+                            <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                                <Package className="w-10 h-10 text-gray-400 dark:text-gray-500" />
+                            </div>
+                            <p className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">
                                 {view === 'proximas' ? 'No tienes entregas próximas' : 'No tienes entregas registradas'}
                             </p>
-                            <p className="text-sm mt-2">Consulta con tu nutricionista para configurar tu calendario</p>
+                            <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
+                                Consulta con tu nutricionista para configurar tu calendario de entregas
+                            </p>
                         </div>
                     ) : (
                         <div className="space-y-4">
@@ -190,28 +216,27 @@ const MisEntregasIndex = () => {
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                 {entrega.direccion && (
-                                                    <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
-                                                        <svg className="w-5 h-5 text-gray-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                        </svg>
-                                                        <div>
-                                                            <p className="text-xs text-gray-600 font-medium">Dirección</p>
-                                                            <p className="text-sm text-gray-900">{entrega.direccion.alias}</p>
-                                                            <p className="text-xs text-gray-500">{entrega.direccion.descripcion}</p>
+                                                    <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                                                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                            <MapPin className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-xs text-blue-600 dark:text-blue-400 font-bold mb-1">Dirección de Entrega</p>
+                                                            <p className="text-sm font-bold text-blue-900 dark:text-blue-100">{entrega.direccion.alias}</p>
+                                                            <p className="text-xs text-blue-700 dark:text-blue-300 truncate">{entrega.direccion.descripcion}</p>
                                                         </div>
                                                     </div>
                                                 )}
 
                                                 {entrega.comida && (
-                                                    <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
-                                                        <svg className="w-5 h-5 text-gray-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                                                        </svg>
-                                                        <div>
-                                                            <p className="text-xs text-gray-600 font-medium">Comida</p>
-                                                            <p className="text-sm text-gray-900">{entrega.comida.tipo_comida}</p>
-                                                            <p className="text-xs text-gray-500">#{entrega.comida.id_comida}</p>
+                                                    <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl border border-purple-200 dark:border-purple-800">
+                                                        <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/40 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                            <Utensils className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-xs text-purple-600 dark:text-purple-400 font-bold mb-1">Tipo de Comida</p>
+                                                            <p className="text-sm font-bold text-purple-900 dark:text-purple-100">{entrega.comida.tipo_comida}</p>
+                                                            <p className="text-xs text-purple-700 dark:text-purple-300">ID: #{entrega.comida.id_comida}</p>
                                                         </div>
                                                     </div>
                                                 )}
@@ -225,16 +250,17 @@ const MisEntregasIndex = () => {
                 </div>
 
                 {view === 'proximas' && proximasEntregas.length > 0 && (
-                    <div className="bg-gradient-to-r from-primary-50 to-blue-50 border-l-4 border-primary-500 p-4 rounded">
-                        <div className="flex items-start">
-                            <div className="flex-shrink-0">
-                                <svg className="h-5 w-5 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                </svg>
+                    <div className="bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 border-l-4 border-primary-500 p-5 rounded-xl animate-fadeIn">
+                        <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 w-10 h-10 bg-primary-100 dark:bg-primary-900/40 rounded-lg flex items-center justify-center">
+                                <Info className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                             </div>
-                            <div className="ml-3">
-                                <p className="text-sm text-primary-800">
-                                    <strong>Recordatorio:</strong> Estas son tus próximas 7 entregas programadas. Asegúrate de estar disponible en la dirección indicada.
+                            <div>
+                                <p className="text-sm text-primary-900 dark:text-primary-100 font-medium mb-1">
+                                    Recordatorio Importante
+                                </p>
+                                <p className="text-sm text-primary-800 dark:text-primary-200">
+                                    Estas son tus próximas 7 entregas programadas. Asegúrate de estar disponible en la dirección indicada.
                                 </p>
                             </div>
                         </div>

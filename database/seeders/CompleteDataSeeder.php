@@ -307,9 +307,13 @@ class CompleteDataSeeder extends Seeder
         // Plan 1: Para Juan García (paciente de Carlos)
         $plan1 = PlanAlimentacion::create([
             'nombre' => 'Plan Deportivo - Juan García',
+            'nombre_plan' => 'Plan Deportivo - Juan García',
             'descripcion' => 'Plan enfocado en ganancia muscular y rendimiento deportivo',
             'fecha_inicio' => now(),
             'fecha_fin' => now()->addDays(30),
+            'objetivo' => 'GANANCIA_MUSCULAR',
+            'estado' => 'ACTIVO',
+            'duracion_dias' => 30,
             'id_paciente' => $pacientes[0]->id_paciente,
             'id_nutricionista' => $nutricionistas[0]->id_nutricionista, // Carlos
         ]);
@@ -323,7 +327,7 @@ class CompleteDataSeeder extends Seeder
         // Desayuno
         $desayuno1 = Comida::create([
             'id_dia' => $dia1->id_dia,
-            'tipo_comida' => 'desayuno',
+            'tipo_comida' => 'DESAYUNO',
             'orden' => 1,
         ]);
         $desayuno1->alimentos()->attach([
@@ -335,7 +339,7 @@ class CompleteDataSeeder extends Seeder
         // Almuerzo
         $almuerzo1 = Comida::create([
             'id_dia' => $dia1->id_dia,
-            'tipo_comida' => 'almuerzo',
+            'tipo_comida' => 'ALMUERZO',
             'orden' => 2,
         ]);
         $almuerzo1->alimentos()->attach([
@@ -347,7 +351,7 @@ class CompleteDataSeeder extends Seeder
         // Cena
         $cena1 = Comida::create([
             'id_dia' => $dia1->id_dia,
-            'tipo_comida' => 'cena',
+            'tipo_comida' => 'CENA',
             'orden' => 3,
         ]);
         $cena1->alimentos()->attach([
@@ -359,9 +363,13 @@ class CompleteDataSeeder extends Seeder
         // Plan 2: Para Ana Martínez
         $plan2 = PlanAlimentacion::create([
             'nombre' => 'Plan Equilibrado - Ana Martínez',
+            'nombre_plan' => 'Plan Equilibrado - Ana Martínez',
             'descripcion' => 'Plan balanceado para mantenimiento y salud general',
             'fecha_inicio' => now(),
             'fecha_fin' => now()->addDays(90),
+            'objetivo' => 'MANTENIMIENTO',
+            'estado' => 'ACTIVO',
+            'duracion_dias' => 90,
             'id_paciente' => $pacientes[1]->id_paciente,
             'id_nutricionista' => $nutricionistas[0]->id_nutricionista, // Carlos
         ]);
@@ -375,7 +383,7 @@ class CompleteDataSeeder extends Seeder
         // Desayuno
         $desayuno2 = Comida::create([
             'id_dia' => $dia2->id_dia,
-            'tipo_comida' => 'desayuno',
+            'tipo_comida' => 'DESAYUNO',
             'orden' => 1,
         ]);
         $desayuno2->alimentos()->attach([
@@ -387,7 +395,7 @@ class CompleteDataSeeder extends Seeder
         // Almuerzo
         $almuerzo2 = Comida::create([
             'id_dia' => $dia2->id_dia,
-            'tipo_comida' => 'almuerzo',
+            'tipo_comida' => 'ALMUERZO',
             'orden' => 2,
         ]);
         $almuerzo2->alimentos()->attach([
@@ -399,7 +407,7 @@ class CompleteDataSeeder extends Seeder
         // Snack
         $snack2 = Comida::create([
             'id_dia' => $dia2->id_dia,
-            'tipo_comida' => 'snack',
+            'tipo_comida' => 'COLACION_VESPERTINA',
             'orden' => 3,
         ]);
         $snack2->alimentos()->attach([
@@ -410,7 +418,7 @@ class CompleteDataSeeder extends Seeder
         // Cena
         $cena2 = Comida::create([
             'id_dia' => $dia2->id_dia,
-            'tipo_comida' => 'cena',
+            'tipo_comida' => 'CENA',
             'orden' => 4,
         ]);
         $cena2->alimentos()->attach([
@@ -421,9 +429,13 @@ class CompleteDataSeeder extends Seeder
         // Plan 3: Para María Rodríguez
         $plan3 = PlanAlimentacion::create([
             'nombre' => 'Plan Fitness - María Rodríguez',
+            'nombre_plan' => 'Plan Fitness - María Rodríguez',
             'descripcion' => 'Plan para pérdida de grasa y tonificación',
             'fecha_inicio' => now(),
             'fecha_fin' => now()->addDays(60),
+            'objetivo' => 'PERDIDA_PESO',
+            'estado' => 'ACTIVO',
+            'duracion_dias' => 60,
             'id_paciente' => $pacientes[3]->id_paciente,
             'id_nutricionista' => $nutricionistas[1]->id_nutricionista, // María López
         ]);
@@ -437,7 +449,7 @@ class CompleteDataSeeder extends Seeder
         // Desayuno
         $desayuno3 = Comida::create([
             'id_dia' => $dia3->id_dia,
-            'tipo_comida' => 'desayuno',
+            'tipo_comida' => 'DESAYUNO',
             'orden' => 1,
         ]);
         $desayuno3->alimentos()->attach([
@@ -449,7 +461,7 @@ class CompleteDataSeeder extends Seeder
         // Almuerzo
         $almuerzo3 = Comida::create([
             'id_dia' => $dia3->id_dia,
-            'tipo_comida' => 'almuerzo',
+            'tipo_comida' => 'ALMUERZO',
             'orden' => 2,
         ]);
         $almuerzo3->alimentos()->attach([
@@ -461,7 +473,7 @@ class CompleteDataSeeder extends Seeder
         // Cena
         $cena3 = Comida::create([
             'id_dia' => $dia3->id_dia,
-            'tipo_comida' => 'cena',
+            'tipo_comida' => 'CENA',
             'orden' => 3,
         ]);
         $cena3->alimentos()->attach([

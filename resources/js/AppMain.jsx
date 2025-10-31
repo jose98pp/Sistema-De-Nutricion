@@ -9,6 +9,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 // Pages
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
+import ForgotPassword from './pages/Auth/ForgotPassword';
+import ResetPassword from './pages/Auth/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Pacientes from './pages/Pacientes/Index';
 import PacienteForm from './pages/Pacientes/Form';
@@ -37,7 +39,7 @@ import NutricionistaPacientes from './pages/Nutricionistas/Pacientes';
 import Perfil from './pages/Perfil/Index';
 import ChangePassword from './pages/Perfil/ChangePassword';
 import Direcciones from './pages/Direcciones/Index';
-import DireccionForm from './pages/Direcciones/Form';
+import DireccionForm from './pages/Direcciones/FormMejorado';
 import Recetas from './pages/Recetas/Index';
 import RecetaForm from './pages/Recetas/Form';
 import AnalisisClinicos from './pages/AnalisisClinicos/Index';
@@ -51,8 +53,9 @@ import MisRecetas from './pages/MisRecetas/Index';
 import MisAnalisis from './pages/MisAnalisis/Index';
 import MiCalendario from './pages/MiCalendario/Index';
 import MisEntregas from './pages/MisEntregas/Index';
-import MiMenuSemanal from './pages/MiMenuSemanal/Index';
+import MiMenuSemanal from './pages/MiMenuSemanal/IndexSimplificado';
 import MisComidasHoy from './pages/MisComidasHoy/Index';
+import MiPlan from './pages/MiPlan/Index';
 
 // Ya no necesitamos MainLayout porque las páginas usan el componente Layout
 // que ya tiene el sidebar y header completo
@@ -67,6 +70,8 @@ function App() {
                     {/* Public Routes */}
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
 
                     {/* Protected Routes */}
                     <Route element={<ProtectedRoute />}>
@@ -155,6 +160,7 @@ function App() {
                             <Route path="/entregas/:id" element={<EntregaView />} />
                             
                             {/* Vistas para Pacientes */}
+                            <Route path="/mi-plan" element={<MiPlan />} />
                             <Route path="/mis-direcciones" element={<MisDirecciones />} />
                             <Route path="/mis-recetas" element={<MisRecetas />} />
                             <Route path="/mis-analisis" element={<MisAnalisis />} />

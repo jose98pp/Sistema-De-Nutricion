@@ -34,6 +34,11 @@ use App\Http\Controllers\Api\PlanAlimentacionMejoradoController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
+// Recuperación de contraseña
+Route::post('/forgot-password', [\App\Http\Controllers\Api\PasswordResetController::class, 'forgotPassword']);
+Route::post('/reset-password', [\App\Http\Controllers\Api\PasswordResetController::class, 'resetPassword']);
+Route::post('/verify-reset-token', [\App\Http\Controllers\Api\PasswordResetController::class, 'verifyToken']);
+
 // Rutas protegidas con Sanctum - Comunes para todos los roles autenticados
 Route::middleware('auth:sanctum')->group(function () {
     
@@ -45,8 +50,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/stats', [DashboardController::class, 'getStats']);
     
     // Perfil
+    Route::get('/perfil', [ProfileController::class, 'show']);
     Route::put('/perfil', [ProfileController::class, 'update']);
-    Route::put('/perfil/cambiar-password', [ProfileController::class, 'changePassword']);
+    Route::post('/perfil/foto', [ProfileController::class, 'uploadPhoto']);
+    Route::delete('/perfil/foto', [ProfileController::class, 'deletePhoto']);
+    Route::put('/perfil/password', [ProfileController::class, 'changePassword']);
+    Route::put('/perfil/preferencias', [ProfileController::class, 'updatePreferences']);
+    Route::put('/perfil/notificaciones', [ProfileController::class, 'updateNotifications']);
     
     // Notificaciones (todos los roles)
     Route::get('notificaciones', [NotificationController::class, 'index']);
@@ -60,6 +70,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('mensajes/conversaciones', [MessageController::class, 'conversations']);
     Route::get('mensajes/conversacion/{userId}', [MessageController::class, 'getConversation']);
     Route::post('mensajes', [MessageController::class, 'store']);
+    Route::put('mensajes/{id}', [MessageController::class, 'update']);
+    Route::delete('mensajes/{id}', [MessageController::class, 'destroy']);
     Route::put('mensajes/{id}/leer', [MessageController::class, 'markAsRead']);
     Route::get('mensajes/no-leidos/contar', [MessageController::class, 'countUnread']);
     Route::get('mensajes/usuarios/buscar', [MessageController::class, 'searchUsers']);
@@ -74,8 +86,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('fotos-progreso/comparacion/{pacienteId}', [ProgressPhotoController::class, 'comparacion']);
     Route::get('fotos-progreso/timeline/{pacienteId}', [ProgressPhotoController::class, 'timeline']);
     
-    // Planes de Alimentación e Ingestas (todos los roles)
-    Route::apiResource('planes', PlanAlimentacionController::class);
+    // Ingestas (todos los roles)
     Route::apiResource('ingestas', IngestaController::class);
     Route::get('ingestas/historial/{paciente_id}', [IngestaController::class, 'historial']);
     
@@ -90,53 +101,29 @@ Route::middleware(['auth:sanctum', 'role:admin,nutricionista'])->group(function 
     // Pacientes
     Route::apiResource('pacientes', PacienteController::class);
     
-    // Nutricionistas (solo admin puede gestionar)
-    Route::apiResource('nutricionistas', NutricionistaController::class)->middleware('role:admin');
+    // Nutricionistas - Lectura para admin y nutricionista, escritura solo admin
+    Route::get('nutricionistas', [NutricionistaController::class, 'index']);
+    Route::get('nutricionistas/{id}', [NutricionistaController::class, 'show']);
     
-    // Alimentos (solo escritura para admin/nutricionista)
-    Route::post('alimentos', [AlimentoController::class, 'store']);
-    Route::put('alimentos/{id}', [AlimentoController::class, 'update']);
-    Route::delete('alimentos/{id}', [AlimentoController::class, 'destroy']);
-    
-    // Servicios
-    Route::apiResource('servicios', ServicioController::class);
-    
-    // Contratos
-    Route::apiResource('contratos', ContratoController::class);
+    // Contratos - CRUD completo para admin y nutricionista
+    Route::get('contratos', [ContratoController::class, 'index']);
+    Route::post('contratos', [ContratoController::class, 'store']);
+    Route::get('contratos/{id}', [ContratoController::class, 'show']);
+    Route::put('contratos/{id}', [ContratoController::class, 'update']);
+    Route::delete('contratos/{id}', [ContratoController::class, 'destroy']);
     Route::get('contratos/paciente/{paciente_id}', [ContratoController::class, 'getByPaciente']);
     Route::get('contratos/estado/{estado}', [ContratoController::class, 'getByEstado']);
     
-    // Evaluaciones
-    Route::apiResource('evaluaciones', EvaluacionController::class);
-    Route::get('evaluaciones/historial/{paciente_id}', [EvaluacionController::class, 'historialPaciente']);
-    Route::get('evaluaciones-pacientes', [EvaluacionController::class, 'getPacientesNutricionista']);
+    // Cancelar contrato - Admin y Nutricionista
+    Route::put('contratos/{id}/cancelar', [ContratoController::class, 'cancelar']);
     
-    // Direcciones (gestión completa)
-    Route::apiResource('direcciones', DireccionController::class);
-    Route::get('direcciones/paciente/{id_paciente}', [DireccionController::class, 'byPaciente']);
-    
-    // Recetas (gestión completa)
-    Route::apiResource('recetas', RecetaController::class);
-    Route::post('recetas/{id}/agregar-comida', [RecetaController::class, 'attachToComida']);
-    Route::delete('recetas/{id}/remover-comida/{id_comida}', [RecetaController::class, 'detachFromComida']);
-    
-    // Análisis Clínicos (gestión completa)
-    Route::apiResource('analisis-clinicos', AnalisisClinicoController::class);
-    Route::post('analisis-clinicos/{id}/vincular-evaluacion', [AnalisisClinicoController::class, 'attachToEvaluacion']);
-    Route::delete('analisis-clinicos/{id}/desvincular-evaluacion/{id_evaluacion}', [AnalisisClinicoController::class, 'detachFromEvaluacion']);
-    
-    // Calendarios de Entrega (gestión completa)
-    Route::apiResource('calendarios-entrega', CalendarioEntregaController::class);
-    Route::get('calendarios-entrega/contrato/{id_contrato}', [CalendarioEntregaController::class, 'byContrato']);
-    Route::get('calendarios-entrega-activos', [CalendarioEntregaController::class, 'activos']);
-    
-    // Entregas Programadas (gestión completa)
-    Route::apiResource('entregas-programadas', EntregaProgramadaController::class);
-    Route::put('entregas-programadas/{id}/marcar-entregada', [EntregaProgramadaController::class, 'marcarComoEntregada']);
-    Route::put('entregas-programadas/{id}/marcar-omitida', [EntregaProgramadaController::class, 'marcarComoOmitida']);
-    Route::get('entregas-del-dia', [EntregaProgramadaController::class, 'entregasDelDia']);
-    Route::get('entregas-pendientes', [EntregaProgramadaController::class, 'entregasPendientes']);
-    Route::post('entregas-programadas/generar/{id_calendario}', [EntregaProgramadaController::class, 'generarEntregas']);
+    // Planes de Alimentación - CRUD para admin y nutricionista
+    Route::get('planes', [PlanAlimentacionController::class, 'index']);
+    Route::post('planes', [PlanAlimentacionController::class, 'store']);
+    Route::get('planes/{id}', [PlanAlimentacionController::class, 'show']);
+    Route::put('planes/{id}', [PlanAlimentacionController::class, 'update']);
+    Route::delete('planes/{id}', [PlanAlimentacionController::class, 'destroy']);
+    Route::patch('planes/{id}/toggle-status', [PlanAlimentacionController::class, 'toggleStatus']);
     
     // Planes de Alimentación Mejorados
     Route::get('planes-mejorados', [PlanAlimentacionMejoradoController::class, 'index']);
@@ -145,10 +132,72 @@ Route::middleware(['auth:sanctum', 'role:admin,nutricionista'])->group(function 
     Route::put('planes-mejorados/{id}', [PlanAlimentacionMejoradoController::class, 'update']);
     Route::delete('planes-mejorados/{id}', [PlanAlimentacionMejoradoController::class, 'destroy']);
     Route::post('planes-mejorados/{id}/duplicar', [PlanAlimentacionMejoradoController::class, 'duplicar']);
+    
+    // Servicios - Lectura para admin y nutricionista
+    Route::get('servicios', [ServicioController::class, 'index']);
+    Route::get('servicios/{id}', [ServicioController::class, 'show']);
+    
+    // Evaluaciones - CRUD completo para admin y nutricionista
+    Route::get('evaluaciones', [EvaluacionController::class, 'index']);
+    Route::post('evaluaciones', [EvaluacionController::class, 'store']);
+    Route::get('evaluaciones/{id}', [EvaluacionController::class, 'show']);
+    Route::put('evaluaciones/{id}', [EvaluacionController::class, 'update']);
+    Route::delete('evaluaciones/{id}', [EvaluacionController::class, 'destroy']);
+    Route::get('evaluaciones/historial/{paciente_id}', [EvaluacionController::class, 'historialPaciente']);
+    Route::get('evaluaciones-pacientes', [EvaluacionController::class, 'getPacientesNutricionista']);
+    
+    // Calendarios de Entrega - Admin y Nutricionista
+    Route::apiResource('calendarios-entrega', CalendarioEntregaController::class);
+    Route::get('calendarios-entrega/contrato/{id_contrato}', [CalendarioEntregaController::class, 'byContrato']);
+    Route::get('calendarios-entrega-activos', [CalendarioEntregaController::class, 'activos']);
+    
+    // Entregas Programadas - Admin y Nutricionista
+    Route::apiResource('entregas-programadas', EntregaProgramadaController::class);
+    Route::put('entregas-programadas/{id}/marcar-entregada', [EntregaProgramadaController::class, 'marcarComoEntregada']);
+    Route::put('entregas-programadas/{id}/marcar-omitida', [EntregaProgramadaController::class, 'marcarComoOmitida']);
+    Route::get('entregas-del-dia', [EntregaProgramadaController::class, 'entregasDelDia']);
+    Route::get('entregas-pendientes', [EntregaProgramadaController::class, 'entregasPendientes']);
+    Route::post('entregas-programadas/generar/{id_calendario}', [EntregaProgramadaController::class, 'generarEntregas']);
+    
+    // Recetas - Admin y Nutricionista
+    Route::apiResource('recetas', RecetaController::class);
+    Route::post('recetas/{id}/agregar-comida', [RecetaController::class, 'attachToComida']);
+    Route::delete('recetas/{id}/remover-comida/{id_comida}', [RecetaController::class, 'detachFromComida']);
+    
+    // Análisis Clínicos - Admin y Nutricionista
+    Route::apiResource('analisis-clinicos', AnalisisClinicoController::class);
+    Route::post('analisis-clinicos/{id}/vincular-evaluacion', [AnalisisClinicoController::class, 'attachToEvaluacion']);
+    Route::delete('analisis-clinicos/{id}/desvincular-evaluacion/{id_evaluacion}', [AnalisisClinicoController::class, 'detachFromEvaluacion']);
+    
+    // Direcciones - Admin y Nutricionista
+    Route::apiResource('direcciones', DireccionController::class);
+    Route::get('direcciones/paciente/{id_paciente}', [DireccionController::class, 'byPaciente']);
+});
+
+// Rutas exclusivas para Admin
+Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
+    // Nutricionistas - Gestión completa solo para admin
+    Route::post('nutricionistas', [NutricionistaController::class, 'store']);
+    Route::put('nutricionistas/{id}', [NutricionistaController::class, 'update']);
+    Route::delete('nutricionistas/{id}', [NutricionistaController::class, 'destroy']);
+    
+    // Alimentos (solo escritura para admin/nutricionista)
+    Route::post('alimentos', [AlimentoController::class, 'store']);
+    Route::put('alimentos/{id}', [AlimentoController::class, 'update']);
+    Route::delete('alimentos/{id}', [AlimentoController::class, 'destroy']);
+    
+    // Servicios - Escritura solo para admin
+    Route::post('servicios', [ServicioController::class, 'store']);
+    Route::put('servicios/{id}', [ServicioController::class, 'update']);
+    Route::delete('servicios/{id}', [ServicioController::class, 'destroy']);
 });
 
 // Rutas exclusivas para Pacientes
 Route::middleware(['auth:sanctum', 'role:paciente'])->group(function () {
+    
+    // Mi Plan de Alimentación (solo lectura)
+    Route::get('mi-plan', [PlanAlimentacionController::class, 'miPlan']);
+    Route::get('mi-plan/{id}', [PlanAlimentacionController::class, 'show']);
     
     // Mis Direcciones (solo lectura)
     Route::get('mis-direcciones', [DireccionController::class, 'misDirecciones']);
@@ -164,11 +213,13 @@ Route::middleware(['auth:sanctum', 'role:paciente'])->group(function () {
     
     // Mis Entregas
     Route::get('mis-entregas', [EntregaProgramadaController::class, 'misEntregas']);
-    Route::get('mis-entregas/proximas', [EntregaProgramadaController::class, 'proximasEntregas']);
     
     // Mi Menú Semanal
-    Route::get('mi-menu-semanal', [MenuSemanalController::class, 'miMenuSemanal']);
+    Route::get('mi-menu-semanal', [MenuSemanalController::class, 'getMiMenuSemanal']);
     Route::get('menu-del-dia', [MenuSemanalController::class, 'menuDelDia']);
+    
+    // Mis Entregas
+    Route::get('mis-entregas/proximas', [EntregaProgramadaController::class, 'proximasEntregas']);
     
     // Mis Comidas de Hoy
     Route::get('progreso-del-dia', [IngestaController::class, 'progresoDelDia']);

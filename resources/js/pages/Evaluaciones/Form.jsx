@@ -165,18 +165,18 @@ const EvaluacionForm = () => {
                                     required={!pacienteSeleccionado}
                                 />
                                 {showPacientes && pacientes.length > 0 && (
-                                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                                    <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl max-h-60 overflow-auto">
                                         {pacientes.map((paciente) => (
                                             <button
                                                 key={paciente.id_paciente}
                                                 type="button"
                                                 onClick={() => handleSelectPaciente(paciente)}
-                                                className="w-full text-left px-4 py-3 hover:bg-primary-50 transition-colors border-b last:border-b-0"
+                                                className="w-full text-left px-4 py-3 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors border-b border-gray-200 dark:border-gray-700 last:border-b-0"
                                             >
-                                                <p className="font-medium text-gray-800">
+                                                <p className="font-medium text-gray-800 dark:text-gray-100">
                                                     {paciente.nombre} {paciente.apellido}
                                                 </p>
-                                                <p className="text-sm text-gray-500">{paciente.email}</p>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400">{paciente.email}</p>
                                             </button>
                                         ))}
                                     </div>

@@ -30,11 +30,11 @@ class ProgressPhoto extends Model
     ];
 
     /**
-     * Relación con Usuario (Paciente)
+     * Relación con Paciente
      */
     public function paciente()
     {
-        return $this->belongsTo(User::class, 'id_paciente');
+        return $this->belongsTo(Paciente::class, 'id_paciente', 'id_paciente');
     }
 
     /**

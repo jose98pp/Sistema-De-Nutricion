@@ -1,186 +1,320 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import NotificationBell from './NotificationBell';
-import { User, Moon, Sun, HelpCircle, LogOut, ChevronDown } from 'lucide-react';
+import { 
+    Home, Users, UserCog, Target, FileText, Apple, UtensilsCrossed, 
+    Activity, Microscope, MapPin, Calendar, Package, BarChart3, 
+    ClipboardList, Salad, Camera, Utensils, CalendarDays, Map, 
+    ChefHat, FlaskConical, CalendarCheck, Truck, MessageSquare,
+    User, Moon, Sun, LogOut, ChevronDown, Menu, X, Heart, Settings
+} from 'lucide-react';
 
 const Layout = ({ children }) => {
     const { user, logout, isAdmin, isNutricionista, isPaciente } = useAuth();
     const { darkMode, toggleDarkMode } = useTheme();
     const navigate = useNavigate();
+    const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const handleLogout = async () => {
         await logout();
         navigate('/login');
     };
 
-    // Menú dinámico según rol
+    // Función para obtener la URL de la foto de perfil
+    const getPhotoUrl = () => {
+        if (!user?.foto_perfil) return null;
+        
+        if (user.foto_perfil.startsWith('http')) {
+            return user.foto_perfil;
+        }
+        
+        const baseUrl = import.meta.env.VITE_API_URL || window.location.origin;
+        return `${baseUrl}/storage/${user.foto_perfil}`;
+    };
+
+    // Componente para el avatar del usuario
+    const UserAvatar = ({ size = 'md', className = '' }) => {
+        const photoUrl = getPhotoUrl();
+        const sizeClasses = {
+            sm: 'w-8 h-8 text-sm',
+            md: 'w-9 h-9 text-base',
+            lg: 'w-10 h-10 text-lg'
+        };
+
+        if (photoUrl) {
+            return (
+                <img
+                    src={photoUrl}
+                    alt={user?.name}
+                    className={`${sizeClasses[size]} rounded-full object-cover shadow-lg ${className}`}
+                    onError={(e) => {
+                        // Si falla la carga, mostrar iniciales
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                    }}
+                />
+            );
+        }
+
+        return (
+            <div className={`${sizeClasses[size]} bg-gradient-to-br from-primary-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold shadow-lg ${className}`}>
+                {user?.name?.charAt(0).toUpperCase()}
+            </div>
+        );
+    };
+
+    // Menú dinámico según rol con iconos de Lucide
     const menuItems = [
-        { path: '/', label: 'Dashboard', icon: '📊', roles: ['admin', 'nutricionista', 'paciente'] },
+        { path: '/', label: 'Dashboard', icon: Home, roles: ['admin', 'nutricionista', 'paciente'] },
         
         // Admin y Nutricionista
-        { path: '/pacientes', label: 'Pacientes', icon: '👥', roles: ['admin', 'nutricionista'] },
-        { path: '/nutricionistas', label: 'Nutricionistas', icon: '👨‍⚕️', roles: ['admin'] },
-        { path: '/servicios', label: 'Servicios', icon: '🎯', roles: ['admin', 'nutricionista'] },
-        { path: '/contratos', label: 'Contratos', icon: '📝', roles: ['admin', 'nutricionista'] },
-        { path: '/alimentos', label: 'Alimentos', icon: '🍎', roles: ['admin', 'nutricionista'] },
-        { path: '/recetas', label: 'Recetas', icon: '🍽️', roles: ['admin', 'nutricionista'] },
-        { path: '/evaluaciones', label: 'Evaluaciones', icon: '📈', roles: ['admin', 'nutricionista'] },
-        { path: '/analisis-clinicos', label: 'Análisis Clínicos', icon: '🔬', roles: ['admin', 'nutricionista'] },
-        { path: '/direcciones', label: 'Direcciones', icon: '📍', roles: ['admin', 'nutricionista'] },
-        { path: '/calendarios-entrega', label: 'Calendarios', icon: '📆', roles: ['admin', 'nutricionista'] },
-        { path: '/entregas', label: 'Entregas', icon: '📦', roles: ['admin', 'nutricionista'] },
-        { path: '/reportes', label: 'Reportes', icon: '📉', roles: ['admin', 'nutricionista'] },
+        { path: '/pacientes', label: 'Pacientes', icon: Users, roles: ['admin', 'nutricionista'] },
+        { path: '/nutricionistas', label: 'Nutricionistas', icon: UserCog, roles: ['admin'] },
+        { path: '/servicios', label: 'Servicios', icon: Target, roles: ['admin', 'nutricionista'] },
+        { path: '/contratos', label: 'Contratos', icon: FileText, roles: ['admin', 'nutricionista'] },
+        { path: '/alimentos', label: 'Alimentos', icon: Apple, roles: ['admin', 'nutricionista'] },
+        { path: '/recetas', label: 'Recetas', icon: UtensilsCrossed, roles: ['admin', 'nutricionista'] },
+        { path: '/evaluaciones', label: 'Evaluaciones', icon: Activity, roles: ['admin', 'nutricionista'] },
+        { path: '/analisis-clinicos', label: 'Análisis Clínicos', icon: Microscope, roles: ['admin', 'nutricionista'] },
+        { path: '/direcciones', label: 'Direcciones', icon: MapPin, roles: ['admin', 'nutricionista'] },
+        { path: '/calendarios-entrega', label: 'Calendarios', icon: Calendar, roles: ['admin', 'nutricionista'] },
+        { path: '/entregas', label: 'Entregas', icon: Package, roles: ['admin', 'nutricionista'] },
+        { path: '/reportes', label: 'Reportes', icon: BarChart3, roles: ['admin', 'nutricionista'] },
+        
+        // Planes - Solo Admin y Nutricionista
+        { path: '/planes', label: 'Planes', icon: ClipboardList, roles: ['admin', 'nutricionista'] },
         
         // Común para todos
-        { path: '/planes', label: 'Planes', icon: '📋', roles: ['admin', 'nutricionista', 'paciente'] },
-        { path: '/ingestas', label: 'Ingestas', icon: '🥗', roles: ['admin', 'nutricionista', 'paciente'] },
-        { path: '/fotos-progreso', label: 'Fotos Progreso', icon: '📸', roles: ['admin', 'nutricionista', 'paciente'] },
+        { path: '/ingestas', label: 'Ingestas', icon: Salad, roles: ['admin', 'nutricionista', 'paciente'] },
+        { path: '/fotos-progreso', label: 'Fotos Progreso', icon: Camera, roles: ['admin', 'nutricionista', 'paciente'] },
         
         // Solo Pacientes
-        { path: '/mis-comidas-hoy', label: 'Mis Comidas de Hoy', icon: '🍽️', roles: ['paciente'] },
-        { path: '/mi-menu-semanal', label: 'Mi Menú Semanal', icon: '📅', roles: ['paciente'] },
-        { path: '/mis-direcciones', label: 'Mis Direcciones', icon: '📍', roles: ['paciente'] },
-        { path: '/mis-recetas', label: 'Mis Recetas', icon: '🥘', roles: ['paciente'] },
-        { path: '/mis-analisis', label: 'Mis Análisis', icon: '🔬', roles: ['paciente'] },
-        { path: '/mi-calendario', label: 'Mi Calendario', icon: '📆', roles: ['paciente'] },
-        { path: '/mis-entregas', label: 'Mis Entregas', icon: '📦', roles: ['paciente'] },
+        { path: '/mi-plan', label: 'Mi Plan', icon: Target, roles: ['paciente'] },
+        { path: '/mi-menu-semanal', label: 'Mi Menú Semanal', icon: CalendarDays, roles: ['paciente'] },
+        { path: '/mis-comidas-hoy', label: 'Mis Comidas de Hoy', icon: Utensils, roles: ['paciente'] },
+        { path: '/mis-direcciones', label: 'Mis Direcciones', icon: Map, roles: ['paciente'] },
+        { path: '/mis-recetas', label: 'Mis Recetas', icon: ChefHat, roles: ['paciente'] },
+        { path: '/mis-analisis', label: 'Mis Análisis', icon: FlaskConical, roles: ['paciente'] },
+        { path: '/mi-calendario', label: 'Mi Calendario', icon: CalendarCheck, roles: ['paciente'] },
+        { path: '/mis-entregas', label: 'Mis Entregas', icon: Truck, roles: ['paciente'] },
         
         // Footer
-        { path: '/mensajes', label: 'Mensajes', icon: '💬', roles: ['admin', 'nutricionista', 'paciente'] },
-        //{ path: '/perfil', label: 'Perfil', icon: '👤', roles: ['admin', 'nutricionista', 'paciente'] },
-        //{ path: '/cerrar-sesion', label: 'Cerrar Sesión', icon: '🔒', roles: ['admin', 'nutricionista', 'paciente'] },
+        { path: '/mensajes', label: 'Mensajes', icon: MessageSquare, roles: ['admin', 'nutricionista', 'paciente'] },
     ];
 
     const filteredMenu = menuItems.filter(item => item.roles.includes(user?.role));
 
+    const isActive = (path) => location.pathname === path;
+
     return (
-        <div className="min-h-screen flex bg-gray-100 dark:bg-gray-900 transition-colors">
-            {/* Sidebar */}
-            <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white dark:bg-gray-800 shadow-lg transition-all duration-300`}>
-                <div className="p-4 border-b dark:border-gray-700">
+        <div className="min-h-screen flex">
+            {/* Sidebar Desktop */}
+            <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} hidden lg:block bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-r border-gray-200 dark:border-gray-700/50 transition-all duration-300 sticky top-0 h-screen overflow-y-auto custom-scrollbar`}>
+                {/* Logo */}
+                <div className="p-6 border-b border-gray-200 dark:border-gray-700/50">
                     <div className="flex items-center justify-between">
-                        <h1 className={`font-bold text-primary-600 dark:text-primary-400 ${!sidebarOpen && 'hidden'}`}>
-                            Sistema Nutrición
-                        </h1>
+                        {sidebarOpen ? (
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+                                    <Heart className="w-6 h-6 text-white" />
+                                </div>
+                                <div>
+                                    <h2 className="font-bold text-gray-800 dark:text-gray-100">NutriSystem</h2>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">v2.0</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg mx-auto">
+                                <Heart className="w-6 h-6 text-white" />
+                            </div>
+                        )}
                         <button 
                             onClick={() => setSidebarOpen(!sidebarOpen)}
-                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
                         >
-                            {sidebarOpen ? '←' : '→'}
+                            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                         </button>
                     </div>
                 </div>
 
+                {/* Navigation */}
                 <nav className="p-4 space-y-2">
                     {filteredMenu.map((item) => {
-                        // Si es el botón de cerrar sesión, renderizar como button
-                        if (item.path === '/cerrar-sesion') {
-                            return (
-                                <button
-                                    key={item.path}
-                                    onClick={handleLogout}
-                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-colors text-left text-gray-700 dark:text-gray-300"
-                                >
-                                    <span className="text-2xl">{item.icon}</span>
-                                    {sidebarOpen && <span className="font-medium">{item.label}</span>}
-                                </button>
-                            );
-                        }
+                        const Icon = item.icon;
+                        const active = isActive(item.path);
                         
-                        // Para los demás items, renderizar como Link
                         return (
                             <Link
                                 key={item.path}
                                 to={item.path}
-                                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-colors text-gray-700 dark:text-gray-300"
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                                    active 
+                                        ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg' 
+                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                                }`}
                             >
-                                <span className="text-2xl">{item.icon}</span>
+                                <Icon className={`w-5 h-5 ${!sidebarOpen && 'mx-auto'}`} />
                                 {sidebarOpen && <span className="font-medium">{item.label}</span>}
                             </Link>
                         );
                     })}
                 </nav>
 
+                {/* User Section */}
+                {sidebarOpen && (
+                    <div className="p-4 border-t border-gray-200 dark:border-gray-700/50 mt-auto">
+                        <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-xl">
+                            <UserAvatar size="lg" />
+                            <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-gray-800 dark:text-gray-100 truncate text-sm">
+                                    {user?.name}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                    {user?.role}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </aside>
+
+            {/* Mobile Sidebar */}
+            {mobileMenuOpen && (
+                <div className="fixed inset-0 z-50 lg:hidden">
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}></div>
+                    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-gray-800 shadow-2xl overflow-y-auto">
+                        {/* Same content as desktop sidebar */}
+                        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-purple-500 rounded-xl flex items-center justify-center">
+                                        <Heart className="w-6 h-6 text-white" />
+                                    </div>
+                                    <div>
+                                        <h2 className="font-bold text-gray-800 dark:text-gray-100">NutriSystem</h2>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">v2.0</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setMobileMenuOpen(false)} className="p-2">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+                        <nav className="p-4 space-y-2">
+                            {filteredMenu.map((item) => {
+                                const Icon = item.icon;
+                                const active = isActive(item.path);
+                                
+                                return (
+                                    <Link
+                                        key={item.path}
+                                        to={item.path}
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                                            active 
+                                                ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white' 
+                                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        }`}
+                                    >
+                                        <Icon className="w-5 h-5" />
+                                        <span className="font-medium">{item.label}</span>
+                                    </Link>
+                                );
+                            })}
+                        </nav>
+                    </aside>
+                </div>
+            )}
 
             {/* Main Content */}
             <main className="flex-1 overflow-auto">
                 {/* Header */}
-                <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-10 transition-colors">
-                    <div className="px-8 py-4">
+                <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700/50 sticky top-0 z-40">
+                    <div className="px-4 lg:px-8 py-4">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-                                Bienvenido, {user?.name}
-                            </h2>
-                            <div className="flex items-center gap-4">
-                                <NotificationBell />
-                                <span className="text-sm text-gray-500 dark:text-gray-400">
+                            {/* Mobile Menu Button */}
+                            <button
+                                onClick={() => setMobileMenuOpen(true)}
+                                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                            >
+                                <Menu className="w-6 h-6" />
+                            </button>
+
+                            {/* Welcome Message */}
+                            <div className="hidden lg:block">
+                                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">
+                                    Bienvenido, {user?.name}
+                                </h2>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
                                     {new Date().toLocaleDateString('es-ES', { 
                                         weekday: 'long', 
                                         year: 'numeric', 
                                         month: 'long', 
                                         day: 'numeric' 
                                     })}
-                                </span>
-                                
-                                {/* Menú de Perfil */}
+                                </p>
+                            </div>
+
+                            {/* Right Section */}
+                            <div className="flex items-center gap-3">
+                                {/* Theme Toggle */}
+                                <button
+                                    onClick={toggleDarkMode}
+                                    className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                >
+                                    {darkMode ? <Sun className="w-5 h-5 text-yellow-500" /> : <Moon className="w-5 h-5 text-gray-600" />}
+                                </button>
+
+                                {/* Notifications */}
+                                <NotificationBell />
+
+                                {/* Profile Menu */}
                                 <div className="relative">
                                     <button
                                         onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                                        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                        className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                                     >
-                                        <div className="w-8 h-8 rounded-full bg-primary-600 dark:bg-primary-500 flex items-center justify-center text-white font-semibold">
-                                            {user?.name?.charAt(0).toUpperCase()}
-                                        </div>
-                                        <ChevronDown size={16} className="text-gray-600 dark:text-gray-300" />
+                                        <UserAvatar size="md" />
+                                        <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-300 hidden lg:block" />
                                     </button>
                                     
-                                    {/* Dropdown Menu */}
+                                    {/* Dropdown */}
                                     {profileMenuOpen && (
-                                        <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2">
+                                        <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 py-2 animate-fadeIn">
+                                            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                                                <p className="font-semibold text-gray-800 dark:text-gray-100">{user?.name}</p>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
+                                            </div>
                                             <Link
                                                 to="/perfil"
                                                 onClick={() => setProfileMenuOpen(false)}
-                                                className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                                                className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
                                             >
-                                                <User size={18} />
+                                                <User className="w-4 h-4" />
                                                 <span>Mi Perfil</span>
                                             </Link>
-                                            
-                                            <button
-                                                onClick={() => {
-                                                    toggleDarkMode();
-                                                    setProfileMenuOpen(false);
-                                                }}
-                                                className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-                                            >
-                                                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-                                                <span>{darkMode ? 'Modo Claro' : 'Modo Oscuro'}</span>
-                                            </button>
-                                            
                                             <Link
-                                                to="/ayuda"
+                                                to="/configuracion"
                                                 onClick={() => setProfileMenuOpen(false)}
-                                                className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                                                className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
                                             >
-                                                <HelpCircle size={18} />
-                                                <span>Ayuda</span>
+                                                <Settings className="w-4 h-4" />
+                                                <span>Configuración</span>
                                             </Link>
-                                            
                                             <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
-                                            
                                             <button
                                                 onClick={() => {
                                                     setProfileMenuOpen(false);
                                                     handleLogout();
                                                 }}
-                                                className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400"
+                                                className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
                                             >
-                                                <LogOut size={18} />
+                                                <LogOut className="w-4 h-4" />
                                                 <span>Cerrar Sesión</span>
                                             </button>
                                         </div>
@@ -192,7 +326,7 @@ const Layout = ({ children }) => {
                 </header>
 
                 {/* Page Content */}
-                <div className="p-8 bg-gray-100 dark:bg-gray-900 min-h-screen transition-colors">
+                <div className="p-4 lg:p-8">
                     {children}
                 </div>
             </main>

@@ -194,4 +194,112 @@ class ContratoController extends Controller
             'data' => $contratos
         ]);
     }
+
+    /**
+     * Cancelar un contrato (Admin y Nutricionista)
+     */
+    public function cancelar(Request $request, $id)
+    {
+        try {
+            $user = auth()->user();
+            
+            // Validar que el usuario sea admin o nutricionista
+            if (!in_array($user->role, ['admin', 'nutricionista'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permisos para cancelar contratos'
+                ], 403);
+            }
+
+            $contrato = Contrato::with(['planesAlimentacion', 'calendarioEntrega'])->find($id);
+
+            if (!$contrato) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Contrato no encontrado'
+                ], 404);
+            }
+
+            // Verificar que el contrato esté activo o pendiente
+            if (!in_array($contrato->estado, ['ACTIVO', 'PENDIENTE'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Solo se pueden cancelar contratos activos o pendientes'
+                ], 400);
+            }
+
+            // Validar motivo de cancelación (opcional)
+            $validator = Validator::make($request->all(), [
+                'motivo_cancelacion' => 'nullable|string|max:500'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            \DB::beginTransaction();
+
+            try {
+                // 1. Cancelar planes de alimentación asociados
+                $planesActualizados = 0;
+                if ($contrato->planesAlimentacion()->count() > 0) {
+                    $planesActualizados = $contrato->planesAlimentacion()->update([
+                        'estado' => 'CANCELADO',
+                        'activo' => false
+                    ]);
+                }
+
+                // 2. Cancelar calendario de entregas si existe
+                $calendarioActualizado = false;
+                if ($contrato->calendarioEntrega) {
+                    $contrato->calendarioEntrega->update([
+                        'estado' => 'CANCELADO'
+                    ]);
+                    $calendarioActualizado = true;
+                }
+
+                // 3. Cancelar el contrato
+                $contrato->update([
+                    'estado' => 'CANCELADO',
+                    'fecha_cancelacion' => now(),
+                    'cancelado_por' => $user->id,
+                    'motivo_cancelacion' => $request->motivo_cancelacion
+                ]);
+
+                \DB::commit();
+
+                // Cargar relaciones actualizadas
+                $contrato->load(['paciente', 'servicio', 'canceladoPor', 'planesAlimentacion']);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Contrato cancelado exitosamente',
+                    'data' => $contrato,
+                    'detalles_cancelacion' => [
+                        'planes_cancelados' => $planesActualizados,
+                        'calendario_cancelado' => $calendarioActualizado,
+                        'cancelado_por' => $user->name,
+                        'fecha_cancelacion' => $contrato->fecha_cancelacion->format('Y-m-d H:i:s')
+                    ]
+                ]);
+
+            } catch (\Exception $e) {
+                \DB::rollBack();
+                throw $e;
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Error al cancelar contrato: ' . $e->getMessage());
+            \Log::error('Trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cancelar el contrato',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

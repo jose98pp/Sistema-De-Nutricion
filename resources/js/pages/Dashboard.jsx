@@ -5,19 +5,31 @@ import { useToast } from '../components/Toast';
 import { logApiError } from '../utils/logger';
 import api from '../config/api';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Users, FileText, TrendingUp, Target, MessageSquare, Utensils, Camera, Calendar, Award, Activity } from 'lucide-react';
 
-const StatCard = ({ title, value, icon, color, subtitle }) => (
-    <div className="card">
-        <div className="flex items-center justify-between">
-            <div>
-                <p className="text-gray-500 text-sm font-medium">{title}</p>
-                <p className="text-3xl font-bold text-gray-800 mt-2">{value}</p>
-                {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+const StatCard = ({ title, value, icon: Icon, color, subtitle, trend }) => (
+    <div className={`stat-card ${color} border border-opacity-20`}>
+        <div className="flex items-center justify-between mb-4">
+            <div className={`w-12 h-12 ${color.replace('from-', 'bg-').replace('to-', '').split(' ')[0]}/20 rounded-xl flex items-center justify-center`}>
+                <Icon className={`w-6 h-6 ${color.includes('green') ? 'text-green-600 dark:text-green-400' : color.includes('blue') ? 'text-blue-600 dark:text-blue-400' : color.includes('purple') ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'}`} />
             </div>
-            <div className={`w-16 h-16 rounded-full ${color} flex items-center justify-center text-3xl`}>
-                {icon}
-            </div>
+            {trend && (
+                <span className={`badge ${trend > 0 ? 'badge-success' : 'badge-error'}`}>
+                    {trend > 0 ? '+' : ''}{trend}%
+                </span>
+            )}
         </div>
+        <div className={`stat-value ${color.includes('green') ? 'text-green-600 dark:text-green-400' : color.includes('blue') ? 'text-blue-600 dark:text-blue-400' : color.includes('purple') ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'}`}>
+            {value}
+        </div>
+        <div className={`stat-label ${color.includes('green') ? 'text-green-700 dark:text-green-300' : color.includes('blue') ? 'text-blue-700 dark:text-blue-300' : color.includes('purple') ? 'text-purple-700 dark:text-purple-300' : 'text-orange-700 dark:text-orange-300'}`}>
+            {title}
+        </div>
+        {subtitle && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                {subtitle}
+            </p>
+        )}
     </div>
 );
 
@@ -57,42 +69,56 @@ const Dashboard = () => {
         return (
             <div className="space-y-6">
                 {/* KPIs Principales */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fadeIn">
                     <StatCard
                         title="Total Pacientes"
                         value={stats?.totales?.pacientes || 0}
-                        icon="👥"
-                        color="bg-blue-100"
+                        icon={Users}
+                        color="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20"
                         subtitle={`${stats?.totales?.pacientes_activos || 0} activos`}
+                        trend={12}
                     />
                     <StatCard
                         title="Planes Activos"
                         value={stats?.totales?.planes_activos || 0}
-                        icon="📋"
-                        color="bg-green-100"
+                        icon={FileText}
+                        color="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20"
                         subtitle={`${stats?.totales?.planes || 0} totales`}
+                        trend={8}
                     />
                     <StatCard
                         title="Evaluaciones"
                         value={stats?.totales?.evaluaciones_mes || 0}
-                        icon="📈"
-                        color="bg-purple-100"
+                        icon={Activity}
+                        color="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20"
                         subtitle="este mes"
+                        trend={15}
                     />
                     <StatCard
                         title="Mensajes"
                         value={stats?.totales?.mensajes_no_leidos || 0}
-                        icon="💬"
-                        color="bg-yellow-100"
+                        icon={MessageSquare}
+                        color="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20"
                         subtitle="sin leer"
+                        trend={-2}
                     />
                 </div>
 
                 {/* Gráficos */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Tendencia de Peso Promedio */}
-                    <div className="card">
-                        <h3 className="text-xl font-bold text-gray-800 mb-4">📊 Tendencia de Peso Promedio</h3>
+                    <div className="card-gradient animate-fadeIn">
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-primary-500/20 rounded-xl flex items-center justify-center">
+                                    <TrendingUp className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Tendencia de Peso Promedio</h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Últimos 6 meses</p>
+                                </div>
+                            </div>
+                        </div>
                         <ResponsiveContainer width="100%" height={300}>
                             <LineChart data={stats?.tendencia_peso || []}>
                                 <CartesianGrid strokeDasharray="3 3" />
@@ -106,8 +132,18 @@ const Dashboard = () => {
                     </div>
 
                     {/* Distribución de IMC */}
-                    <div className="card">
-                        <h3 className="text-xl font-bold text-gray-800 mb-4">🎯 Distribución de IMC</h3>
+                    <div className="card-gradient animate-fadeIn">
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                                    <Target className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Distribución de IMC</h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Estado actual</p>
+                                </div>
+                            </div>
+                        </div>
                         <ResponsiveContainer width="100%" height={300}>
                             <PieChart>
                                 <Pie
@@ -131,13 +167,18 @@ const Dashboard = () => {
                 </div>
 
                 {/* Top Pacientes */}
-                <div className="card">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">🏆 Top 5 Mejores Progresos</h3>
+                <div className="card animate-fadeIn">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center">
+                            <Award className="w-6 h-6 text-white" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">Top 5 Mejores Progresos</h3>
+                    </div>
                     <div className="space-y-3">
                         {stats?.top_pacientes?.length > 0 ? (
                             stats.top_pacientes.map((pac, index) => (
-                                <div key={pac.id} className="flex items-center gap-3 p-3 bg-gradient-to-r from-primary-50 to-green-50 rounded-lg border border-primary-200">
-                                    <div className="w-10 h-10 rounded-full bg-primary-500 text-white flex items-center justify-center font-bold">
+                                <div key={pac.id} className="flex items-center gap-4 p-4 bg-gradient-to-r from-primary-50 to-green-50 dark:from-primary-900/20 dark:to-green-900/20 rounded-xl border border-primary-200 dark:border-primary-800 hover:shadow-md transition-all duration-200">
+                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 text-white flex items-center justify-center font-bold text-lg shadow-lg">
                                         {index + 1}
                                     </div>
                                     <div className="flex-1">
@@ -171,41 +212,47 @@ const Dashboard = () => {
         return (
             <div className="space-y-6">
                 {/* KPIs del Paciente */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fadeIn">
                     <StatCard
                         title="Ingestas Totales"
                         value={stats?.totales?.ingestas || 0}
-                        icon="🍽️"
-                        color="bg-yellow-100"
+                        icon={Utensils}
+                        color="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20"
                         subtitle={`${stats?.totales?.ingestas_semana || 0} esta semana`}
+                        trend={10}
                     />
                     <StatCard
                         title="Evaluaciones"
                         value={stats?.totales?.evaluaciones || 0}
-                        icon="📊"
-                        color="bg-purple-100"
+                        icon={Activity}
+                        color="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20"
                         subtitle="realizadas"
                     />
                     <StatCard
                         title="Fotos Progreso"
                         value={stats?.totales?.fotos_progreso || 0}
-                        icon="📸"
-                        color="bg-blue-100"
+                        icon={Camera}
+                        color="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20"
                         subtitle="subidas"
                     />
                     <StatCard
                         title="Mensajes"
                         value={stats?.totales?.mensajes_no_leidos || 0}
-                        icon="💬"
-                        color="bg-green-100"
+                        icon={MessageSquare}
+                        color="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20"
                         subtitle="sin leer"
                     />
                 </div>
 
                 {/* Progreso hacia el Objetivo */}
                 {stats?.progreso_objetivo && (
-                    <div className="card bg-gradient-to-r from-primary-50 to-green-50 border-2 border-primary-200">
-                        <h3 className="text-xl font-bold text-gray-800 mb-4">🎯 Progreso hacia tu Objetivo</h3>
+                    <div className="card-gradient bg-gradient-to-r from-primary-50 to-green-50 dark:from-primary-900/20 dark:to-green-900/20 border-2 border-primary-200 dark:border-primary-800 animate-fadeIn">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-12 h-12 bg-primary-500/20 rounded-xl flex items-center justify-center">
+                                <Target className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">Progreso hacia tu Objetivo</h3>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
                             <div className="text-center">
                                 <p className="text-sm text-gray-600 mb-1">Peso Inicial</p>
@@ -236,8 +283,16 @@ const Dashboard = () => {
                 )}
 
                 {/* Evolución de Peso */}
-                <div className="card">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">📈 Evolución de Peso</h3>
+                <div className="card-gradient animate-fadeIn">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                            <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Evolución de Peso</h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Tu progreso en el tiempo</p>
+                        </div>
+                    </div>
                     {evolucionData.length > 0 ? (
                         <ResponsiveContainer width="100%" height={300}>
                             <LineChart data={evolucionData}>
@@ -260,11 +315,16 @@ const Dashboard = () => {
     return (
         <Layout>
             <div className="space-y-6">
-                <div>
-                    <h2 className="text-3xl font-bold text-gray-800">📊 Dashboard</h2>
-                    <p className="text-gray-600 mt-1">
-                        {isNutricionista() ? 'Panel de control del nutricionista' : 'Tu resumen personal'}
-                    </p>
+                <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-primary-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
+                        <TrendingUp className="w-8 h-8 text-white" />
+                    </div>
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Dashboard</h2>
+                        <p className="text-gray-600 dark:text-gray-400 mt-1">
+                            {isNutricionista() ? 'Panel de control del nutricionista' : 'Tu resumen personal'}
+                        </p>
+                    </div>
                 </div>
 
                 {loading ? (

@@ -25,11 +25,13 @@ class PlanAlimentacion extends Model
         'objetivo',
         'calorias_objetivo',
         'estado',
+        'activo',
     ];
 
     protected $casts = [
         'fecha_inicio' => 'date',
         'fecha_fin' => 'date',
+        'activo' => 'boolean',
     ];
 
     // Relaciones

@@ -20,12 +20,16 @@ class Contrato extends Model
         'costo_contratado',
         'estado',
         'observaciones',
+        'fecha_cancelacion',
+        'cancelado_por',
+        'motivo_cancelacion',
     ];
 
     protected $casts = [
         'fecha_inicio' => 'date',
         'fecha_fin' => 'date',
         'costo_contratado' => 'decimal:4',
+        'fecha_cancelacion' => 'datetime',
     ];
 
     // Relaciones
@@ -47,6 +51,11 @@ class Contrato extends Model
     public function calendarioEntrega()
     {
         return $this->hasOne(CalendarioEntrega::class, 'id_contrato', 'id_contrato');
+    }
+
+    public function canceladoPor()
+    {
+        return $this->belongsTo(User::class, 'cancelado_por', 'id');
     }
 
     // Scopes

@@ -1,254 +1,568 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../components/Toast';
+import { User, Mail, Phone, Calendar, Lock, Save, Camera, Shield, Bell, Palette, Trash2 } from 'lucide-react';
 import api from '../../config/api';
-import { Save, User, Mail, Phone, Shield, Calendar } from 'lucide-react';
 
-const PerfilIndex = () => {
+const Perfil = () => {
     const { user, updateUser } = useAuth();
-    const navigate = useNavigate();
-
+    const toast = useToast();
+    const fileInputRef = useRef(null);
+    const [activeTab, setActiveTab] = useState('personal');
+    const [loading, setLoading] = useState(false);
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    
     const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        telefono: ''
+        name: user?.name || '',
+        email: user?.email || '',
+        telefono: user?.telefono || '',
+        fecha_nacimiento: user?.fecha_nacimiento || '',
     });
 
-    const [errors, setErrors] = useState({});
-    const [loading, setLoading] = useState(false);
-    const [success, setSuccess] = useState(false);
+    const [passwordData, setPasswordData] = useState({
+        current_password: '',
+        new_password: '',
+        new_password_confirmation: '',
+    });
+
+    const [preferences, setPreferences] = useState({
+        dark_mode: user?.preferences?.dark_mode || false,
+        animations: user?.preferences?.animations !== false,
+        language: user?.preferences?.language || 'es',
+    });
+
+    const [notifications, setNotifications] = useState({
+        email_messages: user?.notification_settings?.email_messages !== false,
+        email_reminders: user?.notification_settings?.email_reminders !== false,
+        email_updates: user?.notification_settings?.email_updates || false,
+    });
 
     useEffect(() => {
         if (user) {
             setFormData({
                 name: user.name || '',
                 email: user.email || '',
-                telefono: user.telefono || ''
+                telefono: user.telefono || '',
+                fecha_nacimiento: user.fecha_nacimiento || '',
+            });
+            setPreferences({
+                dark_mode: user.preferences?.dark_mode || false,
+                animations: user.preferences?.animations !== false,
+                language: user.preferences?.language || 'es',
+            });
+            setNotifications({
+                email_messages: user.notification_settings?.email_messages !== false,
+                email_reminders: user.notification_settings?.email_reminders !== false,
+                email_updates: user.notification_settings?.email_updates || false,
             });
         }
     }, [user]);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-        if (errors[name]) {
-            setErrors(prev => ({
-                ...prev,
-                [name]: ''
-            }));
-        }
-        setSuccess(false);
-    };
-
-    const validateForm = () => {
-        const newErrors = {};
-
-        if (!formData.name.trim()) {
-            newErrors.name = 'El nombre es obligatorio';
-        }
-
-        if (!formData.email.trim()) {
-            newErrors.email = 'El email es obligatorio';
-        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-            newErrors.email = 'El email no es válido';
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        if (!validateForm()) {
-            return;
-        }
-
         setLoading(true);
-
+        
         try {
             const response = await api.put('/perfil', formData);
-            updateUser(response.data.data || response.data.user);
-            setSuccess(true);
-            setTimeout(() => setSuccess(false), 3000);
+            updateUser(response.data.user);
+            toast.success('Perfil actualizado exitosamente');
         } catch (error) {
-            console.error('Error al actualizar perfil:', error);
-            if (error.response?.data?.errors) {
-                setErrors(error.response.data.errors);
-            } else {
-                alert('Error al actualizar el perfil');
-            }
+            toast.error(error.response?.data?.message || 'Error al actualizar perfil');
         } finally {
             setLoading(false);
         }
     };
 
-    const formatDate = (dateString) => {
-        if (!dateString) return '-';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('es-ES', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+    const handlePhotoUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Validar tamaño (max 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            toast.error('La imagen no debe superar los 2MB');
+            return;
+        }
+
+        // Validar tipo
+        if (!file.type.startsWith('image/')) {
+            toast.error('Solo se permiten archivos de imagen');
+            return;
+        }
+
+        setUploadingPhoto(true);
+        const formData = new FormData();
+        formData.append('photo', file);
+
+        try {
+            const response = await api.post('/perfil/foto', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+            updateUser(response.data.user);
+            toast.success('Foto de perfil actualizada');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Error al subir la foto');
+        } finally {
+            setUploadingPhoto(false);
+        }
     };
+
+    const handleDeletePhoto = async () => {
+        if (!window.confirm('¿Estás seguro de eliminar tu foto de perfil?')) return;
+
+        setUploadingPhoto(true);
+        try {
+            const response = await api.delete('/perfil/foto');
+            updateUser(response.data.user);
+            toast.success('Foto de perfil eliminada');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Error al eliminar la foto');
+        } finally {
+            setUploadingPhoto(false);
+        }
+    };
+
+    const handlePasswordChange = async (e) => {
+        e.preventDefault();
+        
+        if (passwordData.new_password !== passwordData.new_password_confirmation) {
+            toast.error('Las contraseñas no coinciden');
+            return;
+        }
+
+        if (passwordData.new_password.length < 8) {
+            toast.error('La contraseña debe tener al menos 8 caracteres');
+            return;
+        }
+
+        setLoading(true);
+        
+        try {
+            await api.put('/perfil/password', passwordData);
+            toast.success('Contraseña actualizada exitosamente');
+            setPasswordData({
+                current_password: '',
+                new_password: '',
+                new_password_confirmation: '',
+            });
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Error al cambiar contraseña');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handlePreferencesUpdate = async (key, value) => {
+        const newPreferences = { ...preferences, [key]: value };
+        setPreferences(newPreferences);
+
+        try {
+            await api.put('/perfil/preferencias', { [key]: value });
+            toast.success('Preferencia actualizada');
+        } catch (error) {
+            toast.error('Error al actualizar preferencia');
+            setPreferences(preferences); // Revertir
+        }
+    };
+
+    const handleNotificationsUpdate = async (key, value) => {
+        const newNotifications = { ...notifications, [key]: value };
+        setNotifications(newNotifications);
+
+        try {
+            await api.put('/perfil/notificaciones', { [key]: value });
+            toast.success('Configuración actualizada');
+        } catch (error) {
+            toast.error('Error al actualizar configuración');
+            setNotifications(notifications); // Revertir
+        }
+    };
+
+    const getPhotoUrl = () => {
+        if (!user?.foto_perfil) return null;
+        
+        // Si ya es una URL completa, retornarla
+        if (user.foto_perfil.startsWith('http')) {
+            return user.foto_perfil;
+        }
+        
+        // Construir URL completa
+        const baseUrl = import.meta.env.VITE_API_URL || window.location.origin;
+        return `${baseUrl}/storage/${user.foto_perfil}`;
+    };
+
+    const tabs = [
+        { id: 'personal', label: 'Información Personal', icon: User },
+        { id: 'security', label: 'Seguridad', icon: Shield },
+        { id: 'preferences', label: 'Preferencias', icon: Palette },
+        { id: 'notifications', label: 'Notificaciones', icon: Bell },
+    ];
 
     return (
         <Layout>
-            <div className="container mx-auto px-4 py-8 max-w-4xl">
+            <div className="space-y-6">
                 {/* Header */}
-                <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-gray-800">Mi Perfil</h1>
-                    <p className="text-gray-600 mt-1">Gestiona tu información personal</p>
+                <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-primary-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
+                        <User className="w-8 h-8 text-white" />
+                    </div>
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Mi Perfil</h2>
+                        <p className="text-gray-600 dark:text-gray-400 mt-1">
+                            Gestiona tu información personal y preferencias
+                        </p>
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Sidebar - User Info */}
-                    <div className="lg:col-span-1">
-                        <div className="bg-white rounded-lg shadow-md p-6">
-                            <div className="text-center">
-                                <div className="w-24 h-24 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                                    <span className="text-blue-600 font-bold text-3xl">
-                                        {user?.name?.charAt(0).toUpperCase()}
-                                    </span>
+                {/* Profile Card */}
+                <div className="card-gradient animate-fadeIn">
+                    <div className="flex flex-col md:flex-row items-center gap-6">
+                        <div className="relative">
+                            {getPhotoUrl() ? (
+                                <img
+                                    src={getPhotoUrl()}
+                                    alt={user?.name}
+                                    className="w-24 h-24 rounded-2xl object-cover shadow-xl"
+                                />
+                            ) : (
+                                <div className="w-24 h-24 bg-gradient-to-br from-primary-500 to-purple-500 rounded-2xl flex items-center justify-center text-white font-bold text-4xl shadow-xl">
+                                    {user?.name?.charAt(0).toUpperCase()}
                                 </div>
-                                <h2 className="text-xl font-bold text-gray-800">{user?.name}</h2>
-                                <p className="text-sm text-gray-500 capitalize mt-1">{user?.role}</p>
-                            </div>
-
-                            <div className="mt-6 space-y-4">
-                                <div className="flex items-center gap-3 text-sm">
-                                    <Mail className="text-gray-400" size={18} />
-                                    <span className="text-gray-700">{user?.email}</span>
-                                </div>
-                                
-                                <div className="flex items-center gap-3 text-sm">
-                                    <Shield className="text-gray-400" size={18} />
-                                    <span className="text-gray-700 capitalize">Rol: {user?.role}</span>
-                                </div>
-
-                                {user?.created_at && (
-                                    <div className="flex items-center gap-3 text-sm">
-                                        <Calendar className="text-gray-400" size={18} />
-                                        <div>
-                                            <p className="text-xs text-gray-500">Miembro desde</p>
-                                            <p className="text-gray-700">{formatDate(user.created_at)}</p>
-                                        </div>
-                                    </div>
+                            )}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={handlePhotoUpload}
+                                className="hidden"
+                            />
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={uploadingPhoto}
+                                className="absolute bottom-0 right-0 w-8 h-8 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center shadow-lg border-2 border-gray-200 dark:border-gray-700 hover:scale-110 transition-transform disabled:opacity-50"
+                            >
+                                {uploadingPhoto ? (
+                                    <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                    <Camera className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                                 )}
-                            </div>
-
-                            <div className="mt-6 pt-6 border-t">
+                            </button>
+                            {user?.foto_perfil && (
                                 <button
-                                    onClick={() => navigate('/perfil/cambiar-password')}
-                                    className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+                                    onClick={handleDeletePhoto}
+                                    disabled={uploadingPhoto}
+                                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform disabled:opacity-50"
                                 >
-                                    Cambiar Contraseña
+                                    <Trash2 className="w-3 h-3 text-white" />
                                 </button>
+                            )}
+                        </div>
+                        <div className="flex-1 text-center md:text-left">
+                            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{user?.name}</h3>
+                            <p className="text-gray-600 dark:text-gray-400">{user?.email}</p>
+                            <div className="flex gap-2 mt-3 justify-center md:justify-start">
+                                <span className="badge badge-success capitalize">{user?.role}</span>
+                                <span className="badge badge-info">Cuenta Activa</span>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="text-center p-4 bg-white/50 dark:bg-gray-800/50 rounded-xl">
+                                <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                                    {Math.floor((new Date() - new Date(user?.created_at)) / (1000 * 60 * 60 * 24))}
+                                </div>
+                                <div className="text-xs text-gray-600 dark:text-gray-400">Días Activo</div>
+                            </div>
+                            <div className="text-center p-4 bg-white/50 dark:bg-gray-800/50 rounded-xl">
+                                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                    {user?.email_verified_at ? '100%' : '80%'}
+                                </div>
+                                <div className="text-xs text-gray-600 dark:text-gray-400">Completado</div>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    {/* Main Content - Edit Form */}
-                    <div className="lg:col-span-2">
-                        <div className="bg-white rounded-lg shadow-md p-6">
-                            <h3 className="text-lg font-semibold text-gray-800 mb-6">Información Personal</h3>
+                {/* Tabs */}
+                <div className="card p-0 overflow-hidden">
+                    <div className="flex gap-2 p-2 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+                        {tabs.map((tab) => {
+                            const Icon = tab.icon;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex items-center gap-2 px-4 py-3 rounded-xl font-medium transition-all whitespace-nowrap ${
+                                        activeTab === tab.id
+                                            ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg'
+                                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    }`}
+                                >
+                                    <Icon className="w-4 h-4" />
+                                    {tab.label}
+                                </button>
+                            );
+                        })}
+                    </div>
 
-                            {success && (
-                                <div className="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
-                                    ✓ Perfil actualizado exitosamente
-                                </div>
-                            )}
-
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Nombre Completo <span className="text-red-500">*</span>
-                                    </label>
-                                    <div className="relative">
-                                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                                        <input
-                                            type="text"
-                                            name="name"
-                                            value={formData.name}
-                                            onChange={handleChange}
-                                            className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                                                errors.name ? 'border-red-500' : 'border-gray-300'
-                                            }`}
-                                            placeholder="Tu nombre completo"
-                                        />
+                    <div className="p-6">
+                        {/* Tab: Información Personal */}
+                        {activeTab === 'personal' && (
+                            <form onSubmit={handleSubmit} className="space-y-6 animate-fadeIn">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                            Nombre Completo
+                                        </label>
+                                        <div className="relative">
+                                            <User className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                value={formData.name}
+                                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                                className="input-field pl-12"
+                                                placeholder="Tu nombre"
+                                                required
+                                            />
+                                        </div>
                                     </div>
-                                    {errors.name && (
-                                        <p className="mt-1 text-sm text-red-600">{errors.name}</p>
-                                    )}
-                                </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Email <span className="text-red-500">*</span>
-                                    </label>
-                                    <div className="relative">
-                                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                                        <input
-                                            type="email"
-                                            name="email"
-                                            value={formData.email}
-                                            onChange={handleChange}
-                                            className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                                                errors.email ? 'border-red-500' : 'border-gray-300'
-                                            }`}
-                                            placeholder="tu@email.com"
-                                        />
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                            Correo Electrónico
+                                        </label>
+                                        <div className="relative">
+                                            <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type="email"
+                                                value={formData.email}
+                                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                                className="input-field pl-12"
+                                                placeholder="tu@email.com"
+                                                required
+                                            />
+                                        </div>
                                     </div>
-                                    {errors.email && (
-                                        <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-                                    )}
-                                </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Teléfono
-                                    </label>
-                                    <div className="relative">
-                                        <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                                        <input
-                                            type="tel"
-                                            name="telefono"
-                                            value={formData.telefono}
-                                            onChange={handleChange}
-                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            placeholder="+1234567890"
-                                        />
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                            Teléfono
+                                        </label>
+                                        <div className="relative">
+                                            <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type="tel"
+                                                value={formData.telefono}
+                                                onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                                                className="input-field pl-12"
+                                                placeholder="+1234567890"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                            Fecha de Nacimiento
+                                        </label>
+                                        <div className="relative">
+                                            <Calendar className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type="date"
+                                                value={formData.fecha_nacimiento}
+                                                onChange={(e) => setFormData({ ...formData, fecha_nacimiento: e.target.value })}
+                                                className="input-field pl-12"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="flex justify-end pt-6 border-t">
+                                <div className="flex justify-end">
                                     <button
                                         type="submit"
                                         disabled={loading}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="btn-primary flex items-center gap-2"
                                     >
-                                        {loading ? (
-                                            <>
-                                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                                                Guardando...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Save size={20} />
-                                                Guardar Cambios
-                                            </>
-                                        )}
+                                        <Save className="w-5 h-5" />
+                                        {loading ? 'Guardando...' : 'Guardar Cambios'}
                                     </button>
                                 </div>
                             </form>
-                        </div>
+                        )}
+
+                        {/* Tab: Seguridad */}
+                        {activeTab === 'security' && (
+                            <form onSubmit={handlePasswordChange} className="space-y-6 animate-fadeIn">
+                                <div className="space-y-6">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                            Contraseña Actual
+                                        </label>
+                                        <div className="relative">
+                                            <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type="password"
+                                                value={passwordData.current_password}
+                                                onChange={(e) => setPasswordData({ ...passwordData, current_password: e.target.value })}
+                                                className="input-field pl-12"
+                                                placeholder="••••••••"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                            Nueva Contraseña
+                                        </label>
+                                        <div className="relative">
+                                            <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type="password"
+                                                value={passwordData.new_password}
+                                                onChange={(e) => setPasswordData({ ...passwordData, new_password: e.target.value })}
+                                                className="input-field pl-12"
+                                                placeholder="••••••••"
+                                                required
+                                                minLength={8}
+                                            />
+                                        </div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                            Mínimo 8 caracteres
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                            Confirmar Nueva Contraseña
+                                        </label>
+                                        <div className="relative">
+                                            <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type="password"
+                                                value={passwordData.new_password_confirmation}
+                                                onChange={(e) => setPasswordData({ ...passwordData, new_password_confirmation: e.target.value })}
+                                                className="input-field pl-12"
+                                                placeholder="••••••••"
+                                                required
+                                                minLength={8}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end">
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="btn-primary flex items-center gap-2"
+                                    >
+                                        <Shield className="w-5 h-5" />
+                                        {loading ? 'Actualizando...' : 'Cambiar Contraseña'}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+
+                        {/* Tab: Preferencias */}
+                        {activeTab === 'preferences' && (
+                            <div className="space-y-6 animate-fadeIn">
+                                <div className="card-gradient p-6">
+                                    <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+                                        <Palette className="w-5 h-5" />
+                                        Apariencia
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <label className="flex items-center justify-between cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                            <div>
+                                                <span className="text-gray-700 dark:text-gray-300 font-medium">Modo Oscuro</span>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">Activa el tema oscuro</p>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={preferences.dark_mode}
+                                                onChange={(e) => handlePreferencesUpdate('dark_mode', e.target.checked)}
+                                                className="w-5 h-5 text-primary-600 rounded"
+                                            />
+                                        </label>
+                                        <label className="flex items-center justify-between cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                            <div>
+                                                <span className="text-gray-700 dark:text-gray-300 font-medium">Animaciones</span>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">Habilita transiciones suaves</p>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={preferences.animations}
+                                                onChange={(e) => handlePreferencesUpdate('animations', e.target.checked)}
+                                                className="w-5 h-5 text-primary-600 rounded"
+                                            />
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="card-gradient p-6">
+                                    <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4">Idioma</h3>
+                                    <select
+                                        value={preferences.language}
+                                        onChange={(e) => handlePreferencesUpdate('language', e.target.value)}
+                                        className="select-field"
+                                    >
+                                        <option value="es">Español</option>
+                                        <option value="en">English</option>
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Tab: Notificaciones */}
+                        {activeTab === 'notifications' && (
+                            <div className="space-y-6 animate-fadeIn">
+                                <div className="card-gradient p-6">
+                                    <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+                                        <Bell className="w-5 h-5" />
+                                        Notificaciones por Email
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <label className="flex items-center justify-between cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                            <div>
+                                                <span className="text-gray-700 dark:text-gray-300 font-medium">Nuevos mensajes</span>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">Recibe notificaciones de mensajes</p>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={notifications.email_messages}
+                                                onChange={(e) => handleNotificationsUpdate('email_messages', e.target.checked)}
+                                                className="w-5 h-5 text-primary-600 rounded"
+                                            />
+                                        </label>
+                                        <label className="flex items-center justify-between cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                            <div>
+                                                <span className="text-gray-700 dark:text-gray-300 font-medium">Recordatorios de comidas</span>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">Recordatorios de tu plan alimenticio</p>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={notifications.email_reminders}
+                                                onChange={(e) => handleNotificationsUpdate('email_reminders', e.target.checked)}
+                                                className="w-5 h-5 text-primary-600 rounded"
+                                            />
+                                        </label>
+                                        <label className="flex items-center justify-between cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                            <div>
+                                                <span className="text-gray-700 dark:text-gray-300 font-medium">Actualizaciones del sistema</span>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">Novedades y mejoras</p>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={notifications.email_updates}
+                                                onChange={(e) => handleNotificationsUpdate('email_updates', e.target.checked)}
+                                                className="w-5 h-5 text-primary-600 rounded"
+                                            />
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -256,4 +570,4 @@ const PerfilIndex = () => {
     );
 };
 
-export default PerfilIndex;
+export default Perfil;

@@ -1,10 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import { useToast } from '../../components/Toast';
 import { useConfirm } from '../../components/ConfirmDialog';
 import api from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
+import { 
+    Plus, Calendar, Utensils, Flame, Activity, TrendingUp,
+    Trash2, Clock, User, Apple, Beef, Wheat, Droplet
+} from 'lucide-react';
 
 const IngestasIndex = () => {
     const { user, isPaciente } = useAuth();
@@ -102,25 +106,30 @@ const IngestasIndex = () => {
     return (
         <Layout>
             <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                    <div>
+                <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg">
+                        <Utensils className="w-8 h-8 text-white" />
+                    </div>
+                    <div className="flex-1">
                         <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Registro de Ingestas</h2>
                         <p className="text-gray-600 dark:text-gray-400 mt-1">Historial de comidas y nutrición</p>
                         {isPaciente() && (
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                💡 Tip: Usa <Link to="/mis-comidas-hoy" className="text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium">Mis Comidas de Hoy</Link> para registro rápido desde tu plan
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                                💡 Tip: Usa <Link to="/mis-comidas-hoy" className="text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium">Mis Comidas de Hoy</Link> para registro rápido
                             </p>
                         )}
                     </div>
-                    <Link to="/ingestas/nueva" className="btn-primary">
-                        + Registrar Ingesta
+                    <Link to="/ingestas/nueva" className="btn-primary flex items-center gap-2">
+                        <Plus size={20} />
+                        Registrar Ingesta
                     </Link>
                 </div>
 
                 <div className="card">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                <Calendar size={16} />
                                 Fecha Inicio
                             </label>
                             <input
@@ -131,7 +140,8 @@ const IngestasIndex = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                <Calendar size={16} />
                                 Fecha Fin
                             </label>
                             <input
@@ -143,7 +153,8 @@ const IngestasIndex = () => {
                         </div>
                         {!isPaciente() && (
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                    <User size={16} />
                                     ID Paciente
                                 </label>
                                 <input
@@ -180,13 +191,17 @@ const IngestasIndex = () => {
                                 }, { calorias: 0, proteinas: 0, carbohidratos: 0, grasas: 0 });
 
                                 return (
-                                    <div key={fecha} className="border rounded-lg p-4 bg-gray-50">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <h3 className="text-xl font-bold text-gray-800">{fecha}</h3>
-                                            <div className="flex gap-4 text-sm">
-                                                <span className="font-medium">
-                                                    Total: <span className="text-primary-600">{totalesDia.calorias.toFixed(0)} kcal</span>
-                                                </span>
+                                    <div key={fecha} className="card-hover animate-fadeIn">
+                                        <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-md">
+                                                    <Calendar className="w-5 h-5 text-white" />
+                                                </div>
+                                                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{fecha}</h3>
+                                            </div>
+                                            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-xl border border-orange-200 dark:border-orange-800">
+                                                <Flame className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                                                <span className="font-bold text-orange-700 dark:text-orange-300">{totalesDia.calorias.toFixed(0)} kcal</span>
                                             </div>
                                         </div>
 
@@ -194,51 +209,73 @@ const IngestasIndex = () => {
                                             {ingestasDelDia.sort((a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora)).map((ingesta) => {
                                                 const totales = calcularTotales(ingesta);
                                                 return (
-                                                    <div key={ingesta.id_ingesta} className="bg-white rounded-lg p-4 border">
+                                                    <div key={ingesta.id_ingesta} className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
                                                         <div className="flex justify-between items-start mb-3">
-                                                            <div>
-                                                                <p className="font-medium text-gray-800">
-                                                                    {new Date(ingesta.fecha_hora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                                                                </p>
-                                                                <p className="text-sm text-gray-500">
-                                                                    {ingesta.paciente?.nombre} {ingesta.paciente?.apellido}
-                                                                </p>
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center shadow-sm">
+                                                                    <Clock className="w-5 h-5 text-white" />
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-bold text-gray-800 dark:text-gray-100">
+                                                                        {new Date(ingesta.fecha_hora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                                                                    </p>
+                                                                    <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                                                        <User size={14} />
+                                                                        {ingesta.paciente?.nombre} {ingesta.paciente?.apellido}
+                                                                    </p>
+                                                                </div>
                                                             </div>
                                                             <button
                                                                 onClick={() => handleDelete(ingesta.id_ingesta)}
-                                                                className="text-red-600 hover:text-red-700 text-sm"
+                                                                className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                                                title="Eliminar ingesta"
                                                             >
-                                                                Eliminar
+                                                                <Trash2 size={18} />
                                                             </button>
                                                         </div>
 
                                                         {ingesta.alimentos && ingesta.alimentos.length > 0 && (
-                                                            <div className="space-y-2 mb-3">
+                                                            <div className="space-y-2 mb-4 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                                                                 {ingesta.alimentos.map((alimento) => (
-                                                                    <div key={alimento.id_alimento} className="flex justify-between text-sm">
-                                                                        <span className="text-gray-700">{alimento.nombre}</span>
-                                                                        <span className="text-gray-500">{alimento.pivot?.cantidad_gramos}g</span>
+                                                                    <div key={alimento.id_alimento} className="flex justify-between items-center text-sm">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Apple size={14} className="text-gray-400" />
+                                                                            <span className="text-gray-700 dark:text-gray-300">{alimento.nombre}</span>
+                                                                        </div>
+                                                                        <span className="font-medium text-gray-600 dark:text-gray-400">{alimento.pivot?.cantidad_gramos}g</span>
                                                                     </div>
                                                                 ))}
                                                             </div>
                                                         )}
 
-                                                        <div className="pt-3 border-t grid grid-cols-4 gap-4 text-center text-sm">
-                                                            <div>
-                                                                <p className="text-gray-500">Calorías</p>
-                                                                <p className="font-bold text-gray-800">{totales.calorias.toFixed(0)}</p>
+                                                        <div className="grid grid-cols-4 gap-3">
+                                                            <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 p-3 rounded-lg border border-orange-200 dark:border-orange-800 text-center">
+                                                                <div className="flex items-center justify-center gap-1 mb-1">
+                                                                    <Flame size={14} className="text-orange-600 dark:text-orange-400" />
+                                                                    <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">Calorías</p>
+                                                                </div>
+                                                                <p className="font-bold text-orange-700 dark:text-orange-300">{totales.calorias.toFixed(0)}</p>
                                                             </div>
-                                                            <div>
-                                                                <p className="text-gray-500">Proteínas</p>
-                                                                <p className="font-bold text-blue-600">{totales.proteinas.toFixed(1)}g</p>
+                                                            <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800 text-center">
+                                                                <div className="flex items-center justify-center gap-1 mb-1">
+                                                                    <Beef size={14} className="text-blue-600 dark:text-blue-400" />
+                                                                    <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Proteínas</p>
+                                                                </div>
+                                                                <p className="font-bold text-blue-700 dark:text-blue-300">{totales.proteinas.toFixed(1)}g</p>
                                                             </div>
-                                                            <div>
-                                                                <p className="text-gray-500">Carbos</p>
-                                                                <p className="font-bold text-yellow-600">{totales.carbohidratos.toFixed(1)}g</p>
+                                                            <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800 text-center">
+                                                                <div className="flex items-center justify-center gap-1 mb-1">
+                                                                    <Wheat size={14} className="text-yellow-600 dark:text-yellow-400" />
+                                                                    <p className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">Carbos</p>
+                                                                </div>
+                                                                <p className="font-bold text-yellow-700 dark:text-yellow-300">{totales.carbohidratos.toFixed(1)}g</p>
                                                             </div>
-                                                            <div>
-                                                                <p className="text-gray-500">Grasas</p>
-                                                                <p className="font-bold text-orange-600">{totales.grasas.toFixed(1)}g</p>
+                                                            <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800 text-center">
+                                                                <div className="flex items-center justify-center gap-1 mb-1">
+                                                                    <Droplet size={14} className="text-amber-600 dark:text-amber-400" />
+                                                                    <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Grasas</p>
+                                                                </div>
+                                                                <p className="font-bold text-amber-700 dark:text-amber-300">{totales.grasas.toFixed(1)}g</p>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -247,23 +284,43 @@ const IngestasIndex = () => {
                                         </div>
 
                                         {/* Totales del día */}
-                                        <div className="mt-4 p-4 bg-primary-50 rounded-lg border border-primary-200">
-                                            <div className="grid grid-cols-4 gap-4 text-center">
-                                                <div>
-                                                    <p className="text-sm text-primary-700">Total Calorías</p>
-                                                    <p className="text-2xl font-bold text-primary-900">{totalesDia.calorias.toFixed(0)}</p>
+                                        <div className="mt-4 p-5 bg-gradient-to-r from-primary-50 to-purple-50 dark:from-primary-900/20 dark:to-purple-900/20 rounded-xl border-2 border-primary-200 dark:border-primary-800">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <Activity className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                                                <h4 className="font-bold text-primary-900 dark:text-primary-100">Totales del Día</h4>
+                                            </div>
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg">
+                                                    <div className="flex items-center justify-center gap-1 mb-2">
+                                                        <Flame className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                                                        <p className="text-sm text-orange-700 dark:text-orange-300 font-medium">Calorías</p>
+                                                    </div>
+                                                    <p className="text-3xl font-bold text-orange-900 dark:text-orange-100">{totalesDia.calorias.toFixed(0)}</p>
+                                                    <p className="text-xs text-orange-600 dark:text-orange-400">kcal</p>
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm text-blue-700">Total Proteínas</p>
-                                                    <p className="text-2xl font-bold text-blue-900">{totalesDia.proteinas.toFixed(1)}g</p>
+                                                <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg">
+                                                    <div className="flex items-center justify-center gap-1 mb-2">
+                                                        <Beef className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                                        <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">Proteínas</p>
+                                                    </div>
+                                                    <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">{totalesDia.proteinas.toFixed(1)}</p>
+                                                    <p className="text-xs text-blue-600 dark:text-blue-400">gramos</p>
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm text-yellow-700">Total Carbos</p>
-                                                    <p className="text-2xl font-bold text-yellow-900">{totalesDia.carbohidratos.toFixed(1)}g</p>
+                                                <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg">
+                                                    <div className="flex items-center justify-center gap-1 mb-2">
+                                                        <Wheat className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                                                        <p className="text-sm text-yellow-700 dark:text-yellow-300 font-medium">Carbohidratos</p>
+                                                    </div>
+                                                    <p className="text-3xl font-bold text-yellow-900 dark:text-yellow-100">{totalesDia.carbohidratos.toFixed(1)}</p>
+                                                    <p className="text-xs text-yellow-600 dark:text-yellow-400">gramos</p>
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm text-orange-700">Total Grasas</p>
-                                                    <p className="text-2xl font-bold text-orange-900">{totalesDia.grasas.toFixed(1)}g</p>
+                                                <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg">
+                                                    <div className="flex items-center justify-center gap-1 mb-2">
+                                                        <Droplet className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                                                        <p className="text-sm text-amber-700 dark:text-amber-300 font-medium">Grasas</p>
+                                                    </div>
+                                                    <p className="text-3xl font-bold text-amber-900 dark:text-amber-100">{totalesDia.grasas.toFixed(1)}</p>
+                                                    <p className="text-xs text-amber-600 dark:text-amber-400">gramos</p>
                                                 </div>
                                             </div>
                                         </div>

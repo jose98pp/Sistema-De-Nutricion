@@ -1,9 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import api from '../../config/api';
+import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
+import { 
+    Plus, Search, Activity, TrendingUp, TrendingDown, Scale, 
+    Ruler, Heart, Eye, Trash2, Calendar, User, Stethoscope,
+    AlertCircle, CheckCircle, Filter
+} from 'lucide-react';
 
 const EvaluacionesIndex = () => {
+    const toast = useToast();
+    const { confirm } = useConfirm();
     const [evaluaciones, setEvaluaciones] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchNombre, setSearchNombre] = useState('');
@@ -52,14 +61,26 @@ const EvaluacionesIndex = () => {
     };
 
     const handleDelete = async (id) => {
-        if (!confirm('¿Estás seguro de eliminar esta evaluación?')) return;
+        const evaluacion = evaluaciones.find(e => e.id_evaluacion === id);
+        
+        const confirmed = await confirm({
+            title: 'Eliminar Evaluación',
+            message: `¿Estás seguro de que deseas eliminar la evaluación de ${evaluacion?.paciente?.nombre}?`,
+            confirmText: 'Sí, eliminar',
+            cancelText: 'Cancelar',
+            type: 'danger'
+        });
+
+        if (!confirmed) return;
 
         try {
             await api.delete(`/evaluaciones/${id}`);
+            toast.success('Evaluación eliminada exitosamente');
             setEvaluaciones(evaluaciones.filter(e => e.id_evaluacion !== id));
             setTodasEvaluaciones(todasEvaluaciones.filter(e => e.id_evaluacion !== id));
         } catch (error) {
-            alert('Error al eliminar evaluación');
+            console.error('Error al eliminar evaluación:', error);
+            toast.error('Error al eliminar la evaluación');
         }
     };
 
@@ -89,21 +110,26 @@ const EvaluacionesIndex = () => {
     return (
         <Layout>
             <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h2 className="text-3xl font-bold text-gray-800">Evaluaciones</h2>
-                        <p className="text-gray-600 mt-1">Evaluaciones y mediciones antropométricas</p>
+                <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg">
+                        <Activity className="w-8 h-8 text-white" />
                     </div>
-                    <Link to="/evaluaciones/nueva" className="btn-primary">
-                        + Nueva Evaluación
+                    <div className="flex-1">
+                        <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Evaluaciones</h2>
+                        <p className="text-gray-600 dark:text-gray-400 mt-1">Evaluaciones y mediciones antropométricas</p>
+                    </div>
+                    <Link to="/evaluaciones/nueva" className="btn-primary flex items-center gap-2">
+                        <Plus size={20} />
+                        Nueva Evaluación
                     </Link>
                 </div>
 
                 <div className="card">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                🔍 Buscar Paciente
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                <Search size={16} />
+                                Buscar Paciente
                             </label>
                             <input
                                 type="text"
@@ -114,7 +140,8 @@ const EvaluacionesIndex = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                <Filter size={16} />
                                 Tipo de Evaluación
                             </label>
                             <select
@@ -139,7 +166,7 @@ const EvaluacionesIndex = () => {
                             <p className="text-gray-500">No se encontraron evaluaciones</p>
                         </div>
                     ) : (
-                        <div className="space-y-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {evaluaciones.map((evaluacion) => {
                                 const imc = calcularIMC(
                                     evaluacion.medicion?.peso_kg,
@@ -148,73 +175,110 @@ const EvaluacionesIndex = () => {
                                 const clasificacion = getClasificacionIMC(imc);
 
                                 return (
-                                    <div key={evaluacion.id_evaluacion} className="border rounded-lg p-5 hover:shadow-md transition-shadow bg-white">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-3 mb-2">
-                                                    <h3 className="text-lg font-bold text-gray-800">
-                                                        {evaluacion.paciente?.nombre} {evaluacion.paciente?.apellido}
-                                                    </h3>
+                                    <div key={evaluacion.id_evaluacion} className="card-hover animate-fadeIn">
+                                        {/* Header */}
+                                        <div className="flex items-start gap-4 mb-4">
+                                            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg flex-shrink-0">
+                                                {evaluacion.paciente?.nombre?.charAt(0) || 'P'}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100 truncate">
+                                                    {evaluacion.paciente?.nombre} {evaluacion.paciente?.apellido}
+                                                </h3>
+                                                <div className="flex items-center gap-2 mt-1">
                                                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getTipoBadgeColor(evaluacion.tipo)}`}>
                                                         {evaluacion.tipo}
                                                     </span>
                                                 </div>
-                                                <p className="text-sm text-gray-600">
-                                                    Nutricionista: {evaluacion.nutricionista?.nombre} {evaluacion.nutricionista?.apellido}
-                                                </p>
-                                                <p className="text-sm text-gray-500">
-                                                    Fecha: {new Date(evaluacion.fecha).toLocaleDateString('es-ES')}
-                                                </p>
                                             </div>
-                                            <button
-                                                onClick={() => handleDelete(evaluacion.id_evaluacion)}
-                                                className="text-red-600 hover:text-red-700 text-sm"
-                                            >
-                                                Eliminar
-                                            </button>
                                         </div>
 
+                                        {/* Info */}
+                                        <div className="space-y-2 mb-4">
+                                            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                                <Stethoscope size={16} className="text-gray-400" />
+                                                <span>{evaluacion.nutricionista?.nombre} {evaluacion.nutricionista?.apellido}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                                <Calendar size={16} className="text-gray-400" />
+                                                <span>{new Date(evaluacion.fecha).toLocaleDateString('es-ES', { 
+                                                    year: 'numeric', 
+                                                    month: 'long', 
+                                                    day: 'numeric' 
+                                                })}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Mediciones */}
                                         {evaluacion.medicion && (
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
-                                                <div className="text-center">
-                                                    <p className="text-sm text-gray-600 mb-1">Peso</p>
-                                                    <p className="text-2xl font-bold text-gray-800">
+                                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                                <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <Scale size={18} className="text-blue-600 dark:text-blue-400" />
+                                                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Peso</span>
+                                                    </div>
+                                                    <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
                                                         {evaluacion.medicion.peso_kg}
                                                     </p>
-                                                    <p className="text-xs text-gray-500">kg</p>
+                                                    <p className="text-xs text-blue-600 dark:text-blue-400">kilogramos</p>
                                                 </div>
-                                                <div className="text-center">
-                                                    <p className="text-sm text-gray-600 mb-1">Altura</p>
-                                                    <p className="text-2xl font-bold text-gray-800">
+
+                                                <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 p-4 rounded-xl border border-purple-200 dark:border-purple-800">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <Ruler size={18} className="text-purple-600 dark:text-purple-400" />
+                                                        <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Altura</span>
+                                                    </div>
+                                                    <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">
                                                         {evaluacion.medicion.altura_m}
                                                     </p>
-                                                    <p className="text-xs text-gray-500">metros</p>
+                                                    <p className="text-xs text-purple-600 dark:text-purple-400">metros</p>
                                                 </div>
-                                                <div className="text-center">
-                                                    <p className="text-sm text-gray-600 mb-1">IMC</p>
-                                                    <p className={`text-2xl font-bold text-${clasificacion.color}-600`}>
+
+                                                <div className={`bg-gradient-to-br from-${clasificacion.color}-50 to-${clasificacion.color}-100 dark:from-${clasificacion.color}-900/20 dark:to-${clasificacion.color}-800/20 p-4 rounded-xl border border-${clasificacion.color}-200 dark:border-${clasificacion.color}-800`}>
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <Activity size={18} className={`text-${clasificacion.color}-600 dark:text-${clasificacion.color}-400`} />
+                                                        <span className={`text-xs font-medium text-${clasificacion.color}-600 dark:text-${clasificacion.color}-400`}>IMC</span>
+                                                    </div>
+                                                    <p className={`text-2xl font-bold text-${clasificacion.color}-700 dark:text-${clasificacion.color}-300`}>
                                                         {imc}
                                                     </p>
-                                                    <p className={`text-xs text-${clasificacion.color}-600`}>
+                                                    <p className={`text-xs text-${clasificacion.color}-600 dark:text-${clasificacion.color}-400`}>
                                                         {clasificacion.texto}
                                                     </p>
                                                 </div>
-                                                <div className="text-center">
-                                                    <p className="text-sm text-gray-600 mb-1">% Grasa</p>
-                                                    <p className="text-2xl font-bold text-gray-800">
+
+                                                <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 p-4 rounded-xl border border-orange-200 dark:border-orange-800">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <TrendingUp size={18} className="text-orange-600 dark:text-orange-400" />
+                                                        <span className="text-xs font-medium text-orange-600 dark:text-orange-400">% Grasa</span>
+                                                    </div>
+                                                    <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">
                                                         {evaluacion.medicion.porc_grasa || 'N/A'}
                                                     </p>
-                                                    <p className="text-xs text-gray-500">porcentaje</p>
+                                                    <p className="text-xs text-orange-600 dark:text-orange-400">porcentaje</p>
                                                 </div>
                                             </div>
                                         )}
 
+                                        {/* Observaciones */}
                                         {evaluacion.observaciones && (
-                                            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                                <p className="text-sm font-medium text-blue-800 mb-1">Observaciones:</p>
-                                                <p className="text-sm text-blue-700">{evaluacion.observaciones}</p>
+                                            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <AlertCircle size={16} className="text-blue-600 dark:text-blue-400" />
+                                                    <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Observaciones</p>
+                                                </div>
+                                                <p className="text-sm text-blue-700 dark:text-blue-400">{evaluacion.observaciones}</p>
                                             </div>
                                         )}
+
+                                        {/* Botón Eliminar */}
+                                        <button
+                                            onClick={() => handleDelete(evaluacion.id_evaluacion)}
+                                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 text-red-600 dark:text-red-400 rounded-xl hover:shadow-md transition-all text-sm font-medium border border-red-200 dark:border-red-800"
+                                        >
+                                            <Trash2 size={16} />
+                                            Eliminar Evaluación
+                                        </button>
                                     </div>
                                 );
                             })}

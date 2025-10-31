@@ -103,19 +103,129 @@ class PlanAlimentacionController extends Controller
                 }
             }
 
+            // Generar calendario de entregas automáticamente si hay contrato
+            $calendarioCreado = false;
+            $entregasGeneradas = 0;
+            
+            if ($plan->id_contrato) {
+                $calendarioCreado = $this->generarCalendarioEntregas($plan);
+                if ($calendarioCreado) {
+                    $entregasGeneradas = $this->generarEntregasProgramadas($plan);
+                }
+            }
+
             DB::commit();
 
             return response()->json([
                 'message' => 'Plan de alimentación creado exitosamente',
-                'plan' => $plan->load('dias.comidas.alimentos')
+                'plan' => $plan->load('dias.comidas.alimentos'),
+                'calendario_entrega' => [
+                    'creado' => $calendarioCreado,
+                    'entregas_generadas' => $entregasGeneradas
+                ]
             ], 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Error al crear plan: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Error al crear el plan',
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+    
+    /**
+     * Generar calendario de entregas para el plan
+     */
+    private function generarCalendarioEntregas($plan)
+    {
+        try {
+            // Verificar si ya existe un calendario para este contrato
+            $calendarioExistente = \App\Models\CalendarioEntrega::where('id_contrato', $plan->id_contrato)->first();
+            
+            if ($calendarioExistente) {
+                return false; // Ya existe, no crear duplicado
+            }
+            
+            $calendario = \App\Models\CalendarioEntrega::create([
+                'id_contrato' => $plan->id_contrato,
+                'fecha_inicio' => $plan->fecha_inicio,
+                'fecha_fin' => $plan->fecha_fin,
+                'estado' => 'ACTIVO',
+                'observaciones' => 'Calendario generado automáticamente al crear plan de alimentación'
+            ]);
+            
+            return true;
+        } catch (\Exception $e) {
+            \Log::error('Error al generar calendario: ' . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Generar entregas programadas basadas en el plan
+     */
+    private function generarEntregasProgramadas($plan)
+    {
+        try {
+            $calendario = \App\Models\CalendarioEntrega::where('id_contrato', $plan->id_contrato)->first();
+            
+            if (!$calendario) {
+                return 0;
+            }
+            
+            // Obtener la dirección principal del paciente
+            $direccion = \App\Models\Direccion::where('id_paciente', $plan->id_paciente)
+                ->where('es_principal', true)
+                ->first();
+            
+            if (!$direccion) {
+                // Si no hay dirección principal, tomar la primera disponible
+                $direccion = \App\Models\Direccion::where('id_paciente', $plan->id_paciente)->first();
+            }
+            
+            if (!$direccion) {
+                \Log::warning("No se encontró dirección para paciente {$plan->id_paciente}");
+                return 0;
+            }
+            
+            // Calcular número de días del plan
+            $fechaInicio = new \DateTime($plan->fecha_inicio);
+            $fechaFin = new \DateTime($plan->fecha_fin);
+            $intervalo = $fechaInicio->diff($fechaFin);
+            $totalDias = $intervalo->days + 1;
+            
+            // Generar entregas cada 7 días (semanal)
+            $entregasCreadas = 0;
+            $fechaEntrega = clone $fechaInicio;
+            $numeroEntrega = 1;
+            
+            while ($fechaEntrega <= $fechaFin) {
+                \App\Models\EntregaProgramada::create([
+                    'id_calendario' => $calendario->id_calendario,
+                    'numero_entrega' => $numeroEntrega,
+                    'fecha_programada' => $fechaEntrega->format('Y-m-d'),
+                    'direccion_entrega' => $direccion->direccion_completa,
+                    'ciudad' => $direccion->ciudad,
+                    'codigo_postal' => $direccion->codigo_postal,
+                    'referencia' => $direccion->referencia,
+                    'estado' => 'PENDIENTE',
+                    'observaciones' => "Entrega semanal #{$numeroEntrega} - Plan: {$plan->nombre}"
+                ]);
+                
+                $entregasCreadas++;
+                $numeroEntrega++;
+                
+                // Avanzar 7 días
+                $fechaEntrega->modify('+7 days');
+            }
+            
+            return $entregasCreadas;
+            
+        } catch (\Exception $e) {
+            \Log::error('Error al generar entregas programadas: ' . $e->getMessage());
+            return 0;
         }
     }
 
@@ -175,5 +285,78 @@ class PlanAlimentacionController extends Controller
         return response()->json([
             'message' => 'Plan eliminado exitosamente'
         ]);
+    }
+
+    /**
+     * Toggle the status of the specified plan.
+     */
+    public function toggleStatus(Request $request, $id)
+    {
+        try {
+            $plan = PlanAlimentacion::findOrFail($id);
+            
+            $plan->activo = $request->input('activo', !$plan->activo);
+            $plan->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Estado del plan actualizado exitosamente',
+                'data' => $plan
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar el estado del plan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener el plan activo del paciente autenticado
+     */
+    public function miPlan(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            
+            // Obtener el paciente asociado al usuario
+            $paciente = \App\Models\Paciente::where('user_id', $user->id)->first();
+            
+            if (!$paciente) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontró información del paciente'
+                ], 404);
+            }
+            
+            // Obtener planes del paciente ordenados por fecha
+            $planes = PlanAlimentacion::with(['dias.comidas.alimentos', 'contrato.servicio'])
+                ->where('id_paciente', $paciente->id_paciente)
+                ->orderBy('fecha_inicio', 'desc')
+                ->get();
+            
+            // Identificar el plan activo (si existe)
+            $planActivo = $planes->first(function ($plan) {
+                $hoy = now();
+                return $plan->fecha_inicio <= $hoy && $plan->fecha_fin >= $hoy;
+            });
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'plan_activo' => $planActivo,
+                    'todos_los_planes' => $planes,
+                    'total_planes' => $planes->count()
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error al obtener plan del paciente: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener el plan',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

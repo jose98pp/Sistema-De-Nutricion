@@ -16,6 +16,11 @@ class Direccion extends Model
         'id_paciente',
         'alias',
         'descripcion',
+        'direccion_completa',
+        'ciudad',
+        'codigo_postal',
+        'referencia',
+        'es_principal',
         'geo_lat',
         'geo_lng',
     ];
@@ -23,6 +28,7 @@ class Direccion extends Model
     protected $casts = [
         'geo_lat' => 'decimal:6',
         'geo_lng' => 'decimal:6',
+        'es_principal' => 'boolean',
     ];
 
     // Relación con Paciente

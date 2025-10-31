@@ -66,6 +66,11 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const updateUser = (updatedUser) => {
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+    };
+
     const isAdmin = () => user?.role === 'admin';
     const isNutricionista = () => user?.role === 'nutricionista';
     const isPaciente = () => user?.role === 'paciente';
@@ -76,6 +81,7 @@ export const AuthProvider = ({ children }) => {
             login, 
             register, 
             logout, 
+            updateUser,
             loading,
             isAdmin,
             isNutricionista,

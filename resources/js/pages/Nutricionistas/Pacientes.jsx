@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import Layout from '../../components/Layout';
-import axios from 'axios';
+import api from '../../config/api';
 import { ArrowLeft, UserPlus, Edit, Mail, Phone, Calendar, Weight, Ruler } from 'lucide-react';
+import { useToast } from '../../components/Toast';
+import { logApiError } from '../../utils/logger';
 
 const NutricionistaPacientes = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const toast = useToast();
     const [nutricionista, setNutricionista] = useState(null);
     const [pacientes, setPacientes] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -19,17 +22,18 @@ const NutricionistaPacientes = () => {
     const fetchData = async () => {
         try {
             // Obtener datos del nutricionista
-            const nutricionistaResponse = await axios.get(`/api/nutricionistas/${id}`);
+            const nutricionistaResponse = await api.get(`/nutricionistas/${id}`);
             setNutricionista(nutricionistaResponse.data.data || nutricionistaResponse.data);
 
             // Obtener pacientes del nutricionista
-            const pacientesResponse = await axios.get('/api/pacientes', {
+            const pacientesResponse = await api.get('/pacientes', {
                 params: { nutricionista_id: id }
             });
             setPacientes(pacientesResponse.data.data || pacientesResponse.data);
             setLoading(false);
         } catch (error) {
-            console.error('Error al cargar datos:', error);
+            logApiError(`/nutricionistas/${id}`, error);
+            toast.error('Error al cargar datos del nutricionista');
             setLoading(false);
         }
     };

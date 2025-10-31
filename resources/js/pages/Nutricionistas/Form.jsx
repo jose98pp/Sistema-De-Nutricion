@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../../components/Layout';
-import axios from 'axios';
+import api from '../../config/api';
 import { Save, ArrowLeft } from 'lucide-react';
+import { useToast } from '../../components/Toast';
+import { logApiError } from '../../utils/logger';
 
 const NutricionistaForm = () => {
     const navigate = useNavigate();
     const { id } = useParams();
     const isEdit = Boolean(id);
+    const toast = useToast();
 
     const [formData, setFormData] = useState({
         nombre: '',
@@ -31,7 +34,7 @@ const NutricionistaForm = () => {
 
     const fetchNutricionista = async () => {
         try {
-            const response = await axios.get(`/api/nutricionistas/${id}`);
+            const response = await api.get(`/nutricionistas/${id}`);
             const nutricionista = response.data.data || response.data;
             setFormData({
                 nombre: nutricionista.nombre || '',
@@ -44,8 +47,8 @@ const NutricionistaForm = () => {
             });
             setLoadingData(false);
         } catch (error) {
-            console.error('Error al cargar nutricionista:', error);
-            alert('Error al cargar el nutricionista');
+            logApiError(`/nutricionistas/${id}`, error);
+            toast.error('Error al cargar el nutricionista');
             navigate('/nutricionistas');
         }
     };
@@ -123,17 +126,20 @@ const NutricionistaForm = () => {
             }
 
             if (isEdit) {
-                await axios.put(`/api/nutricionistas/${id}`, dataToSend);
+                await api.put(`/nutricionistas/${id}`, dataToSend);
+                toast.success('Nutricionista actualizado exitosamente');
             } else {
-                await axios.post('/api/nutricionistas', dataToSend);
+                await api.post('/nutricionistas', dataToSend);
+                toast.success('Nutricionista creado exitosamente');
             }
             navigate('/nutricionistas');
         } catch (error) {
-            console.error('Error al guardar nutricionista:', error);
+            logApiError(isEdit ? `/nutricionistas/${id}` : '/nutricionistas', error);
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
+                toast.error('Por favor corrige los errores en el formulario');
             } else {
-                alert('Error al guardar el nutricionista');
+                toast.error('Error al guardar el nutricionista');
             }
             setLoading(false);
         }

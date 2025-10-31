@@ -112,6 +112,45 @@ class MessageController extends Controller
     }
 
     /**
+     * Actualizar mensaje
+     */
+    public function update(Request $request, $id)
+    {
+        $message = Message::where('id_mensaje', $id)
+            ->where('id_remitente', auth()->id())
+            ->firstOrFail();
+
+        $request->validate([
+            'mensaje' => 'required|string|max:1000'
+        ]);
+
+        $message->update([
+            'mensaje' => $request->mensaje
+        ]);
+
+        return response()->json([
+            'message' => 'Mensaje actualizado exitosamente',
+            'mensaje' => $message->load(['remitente', 'destinatario'])
+        ]);
+    }
+
+    /**
+     * Eliminar mensaje
+     */
+    public function destroy($id)
+    {
+        $message = Message::where('id_mensaje', $id)
+            ->where('id_remitente', auth()->id())
+            ->firstOrFail();
+
+        $message->delete();
+
+        return response()->json([
+            'message' => 'Mensaje eliminado exitosamente'
+        ]);
+    }
+
+    /**
      * Marcar mensaje como leído
      */
     public function markAsRead($id)

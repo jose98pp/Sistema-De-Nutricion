@@ -27,45 +27,48 @@ const Toast = ({ toast, onRemove }) => {
     }, [id, duration, onRemove]);
 
     const getIcon = () => {
+        const iconClass = "w-6 h-6 text-white";
+        const wrapperClass = "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg";
+        
         switch (type) {
             case 'success':
-                return <CheckCircle className="w-5 h-5 text-green-500" />;
+                return <div className={`${wrapperClass} bg-green-500`}><CheckCircle className={iconClass} /></div>;
             case 'error':
-                return <XCircle className="w-5 h-5 text-red-500" />;
+                return <div className={`${wrapperClass} bg-red-500`}><XCircle className={iconClass} /></div>;
             case 'warning':
-                return <AlertCircle className="w-5 h-5 text-yellow-500" />;
+                return <div className={`${wrapperClass} bg-yellow-500`}><AlertCircle className={iconClass} /></div>;
             default:
-                return <Info className="w-5 h-5 text-blue-500" />;
+                return <div className={`${wrapperClass} bg-blue-500`}><Info className={iconClass} /></div>;
         }
     };
 
     const getStyles = () => {
-        const baseStyles = "flex items-center gap-3 p-4 rounded-lg shadow-lg border max-w-md w-full transform transition-all duration-300 ease-in-out";
+        const baseStyles = "flex items-center gap-3 p-4 rounded-2xl shadow-xl border max-w-md w-full transform transition-all duration-300 ease-in-out backdrop-blur-sm animate-slideIn";
         
         switch (type) {
             case 'success':
-                return `${baseStyles} bg-green-50 border-green-200 text-green-800`;
+                return `${baseStyles} bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/40 dark:to-green-800/40 border-green-200 dark:border-green-700/50 text-green-800 dark:text-green-200`;
             case 'error':
-                return `${baseStyles} bg-red-50 border-red-200 text-red-800`;
+                return `${baseStyles} bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/40 dark:to-red-800/40 border-red-200 dark:border-red-700/50 text-red-800 dark:text-red-200`;
             case 'warning':
-                return `${baseStyles} bg-yellow-50 border-yellow-200 text-yellow-800`;
+                return `${baseStyles} bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-900/40 dark:to-yellow-800/40 border-yellow-200 dark:border-yellow-700/50 text-yellow-800 dark:text-yellow-200`;
             default:
-                return `${baseStyles} bg-blue-50 border-blue-200 text-blue-800`;
+                return `${baseStyles} bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/40 dark:to-blue-800/40 border-blue-200 dark:border-blue-700/50 text-blue-800 dark:text-blue-200`;
         }
     };
 
     return (
         <div className={getStyles()} role="alert">
             {getIcon()}
-            <div className="flex-1">
-                <p className="text-sm font-medium">{message}</p>
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium leading-relaxed">{message}</p>
             </div>
             <button
                 onClick={() => onRemove(id)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
                 aria-label="Cerrar notificación"
             >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
             </button>
         </div>
     );
@@ -76,7 +79,7 @@ const ToastContainer = ({ toasts, onRemove }) => {
     if (toasts.length === 0) return null;
 
     return (
-        <div className="fixed top-4 right-4 z-50 space-y-2">
+        <div className="fixed top-4 right-4 z-50 space-y-3 max-w-md">
             {toasts.map((toast) => (
                 <Toast key={toast.id} toast={toast} onRemove={onRemove} />
             ))}

@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
+import { useToast } from '../../components/Toast';
 import api from '../../config/api';
 
 const CalendariosEntregaIndex = () => {
     const [calendarios, setCalendarios] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [generando, setGenerando] = useState(null);
     const [contratos, setContratos] = useState([]);
+    const toast = useToast();
 
     useEffect(() => {
         fetchCalendarios();
@@ -19,6 +22,7 @@ const CalendariosEntregaIndex = () => {
             setCalendarios(response.data.data.data || response.data.data);
         } catch (error) {
             console.error('Error al cargar calendarios:', error);
+            toast.error('Error al cargar los calendarios');
         } finally {
             setLoading(false);
         }
@@ -34,26 +38,37 @@ const CalendariosEntregaIndex = () => {
     };
 
     const handleGenerarEntregas = async (id_calendario) => {
-        if (window.confirm('¿Desea generar entregas automáticamente para este calendario?')) {
+        // Usar window.confirm temporalmente para debugging
+        const confirmed = window.confirm('¿Desea generar entregas automáticamente para este calendario? Se crearán entregas para todos los días del período.');
+        
+        if (confirmed) {
             try {
+                setGenerando(id_calendario);
                 const response = await api.post(`/entregas-programadas/generar/${id_calendario}`);
-                alert(response.data.message);
+                toast.success(response.data.message || 'Entregas generadas exitosamente');
                 fetchCalendarios();
             } catch (error) {
                 console.error('Error al generar entregas:', error);
-                alert('Error al generar entregas');
+                const errorMessage = error.response?.data?.message || 'Error al generar entregas';
+                toast.error(errorMessage);
+            } finally {
+                setGenerando(null);
             }
         }
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('¿Está seguro de eliminar este calendario? Esto eliminará todas las entregas asociadas.')) {
+        // Usar window.confirm temporalmente para debugging
+        const confirmed = window.confirm('¿Está seguro de eliminar este calendario? Esto eliminará todas las entregas asociadas.');
+        
+        if (confirmed) {
             try {
                 await api.delete(`/calendarios-entrega/${id}`);
+                toast.success('Calendario eliminado exitosamente');
                 fetchCalendarios();
             } catch (error) {
                 console.error('Error al eliminar calendario:', error);
-                alert('Error al eliminar el calendario');
+                toast.error('Error al eliminar el calendario');
             }
         }
     };
@@ -159,9 +174,17 @@ const CalendariosEntregaIndex = () => {
                                 <div className="flex flex-col gap-2">
                                     <button
                                         onClick={() => handleGenerarEntregas(calendario.id_calendario)}
-                                        className="btn-success text-sm"
+                                        disabled={generando === calendario.id_calendario}
+                                        className="btn-success text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                     >
-                                        🔄 Generar Entregas Automáticas
+                                        {generando === calendario.id_calendario ? (
+                                            <>
+                                                <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                                Generando...
+                                            </>
+                                        ) : (
+                                            <>🔄 Generar Entregas Automáticas</>
+                                        )}
                                     </button>
                                     <div className="flex gap-2">
                                         <Link

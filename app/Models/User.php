@@ -22,6 +22,11 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'foto_perfil',
+        'telefono',
+        'fecha_nacimiento',
+        'preferences',
+        'notification_settings',
     ];
 
     /**
@@ -44,6 +49,9 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'fecha_nacimiento' => 'date',
+            'preferences' => 'array',
+            'notification_settings' => 'array',
         ];
     }
 
@@ -77,5 +85,16 @@ class User extends Authenticatable
     public function isPaciente()
     {
         return $this->role === 'paciente';
+    }
+
+    /**
+     * Send the password reset notification.
+     *
+     * @param  string  $token
+     * @return void
+     */
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new \App\Notifications\ResetPasswordNotification($token, $this->email));
     }
 }

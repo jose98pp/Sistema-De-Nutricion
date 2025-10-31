@@ -58,22 +58,51 @@ const IngestaForm = () => {
 
     const fetchPlanActual = async () => {
         try {
+            console.log('=== VERIFICACIÓN DE USUARIO Y PLAN ===');
+            console.log('Usuario actual:', user);
+            const idPacienteUsuario = user.paciente?.id_paciente || user.id_paciente;
+            console.log('ID Paciente del usuario:', idPacienteUsuario);
+            
+            // Buscar planes solo del usuario actual
             const response = await api.get('/planes', {
-                params: { activo: 1 }
+                params: { 
+                    activo: 1,
+                    paciente_id: idPacienteUsuario  // Filtrar por paciente
+                }
             });
             const planes = response.data.data || response.data;
+            
+            console.log('Planes recibidos del usuario:', planes);
+            console.log('Total de planes:', planes.length);
+            
+            // Buscar el plan que esté activo HOY
             const planActivo = planes.find(plan => {
                 const hoy = new Date();
                 const inicio = new Date(plan.fecha_inicio);
                 const fin = new Date(plan.fecha_fin);
-                return hoy >= inicio && hoy <= fin;
+                const estaEnRango = hoy >= inicio && hoy <= fin;
+                
+                console.log(`Plan ID ${plan.id_plan}:`, {
+                    nombre: plan.nombre || plan.nombre_plan,
+                    id_paciente: plan.id_paciente,
+                    fecha_inicio: plan.fecha_inicio,
+                    fecha_fin: plan.fecha_fin,
+                    estaEnRango
+                });
+                
+                return estaEnRango;
             });
             
-            setPlanActual(planActivo);
+            console.log('Plan activo encontrado:', planActivo);
             
-            if (!planActivo) {
+            if (planActivo) {
+                console.log('✅ Plan activo del usuario encontrado');
+                setPlanActual(planActivo);
+            } else {
+                console.log('❌ No se encontró un plan activo para este usuario');
                 toast.info('No tienes un plan alimenticio activo. Puedes registrar alimentos libremente.');
                 setTipoRegistro('libre');
+                setPlanActual(null);
             }
         } catch (error) {
             console.error('Error al cargar plan actual:', error);
@@ -86,21 +115,47 @@ const IngestaForm = () => {
         if (!planActual) return;
         
         try {
-            // Obtener las comidas del plan para el día actual
-            const fechaHoy = new Date().toISOString().split('T')[0];
+            // Obtener el plan con sus días y comidas
             const response = await api.get(`/planes/${planActual.id_plan}`);
-            const planDetalle = response.data;
+            const planDetalle = response.data.data || response.data;
             
-            // Filtrar comidas del día actual
-            const comidasHoy = planDetalle.comidas?.filter(comida => {
-                const fechaComida = new Date(comida.fecha).toISOString().split('T')[0];
-                return fechaComida === fechaHoy;
-            }) || [];
+            console.log('Plan detalle:', planDetalle);
             
-            setComidasPlan(comidasHoy);
+            // Calcular qué día del plan es hoy
+            const fechaInicio = new Date(planActual.fecha_inicio);
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            fechaInicio.setHours(0, 0, 0, 0);
+            
+            const diffTime = hoy - fechaInicio;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            const diaIndex = (diffDays % 7) + 1; // Ciclo de 7 días (1-7)
+            
+            console.log('Fecha inicio:', fechaInicio);
+            console.log('Hoy:', hoy);
+            console.log('Diferencia en días:', diffDays);
+            console.log('Día index calculado:', diaIndex);
+            
+            // Buscar el día correspondiente en el plan
+            const dias = planDetalle.dias || planDetalle.planDias || [];
+            const diaHoy = dias.find(dia => dia.dia_numero === diaIndex || dia.dia_index === diaIndex);
+            
+            console.log('Días disponibles:', dias);
+            console.log('Día encontrado:', diaHoy);
+            
+            if (diaHoy && diaHoy.comidas) {
+                // Ordenar comidas por orden
+                const comidasOrdenadas = diaHoy.comidas.sort((a, b) => (a.orden || 0) - (b.orden || 0));
+                setComidasPlan(comidasOrdenadas);
+                console.log('Comidas del día:', comidasOrdenadas);
+            } else {
+                setComidasPlan([]);
+                console.log('No se encontraron comidas para hoy. Estructura del plan:', planDetalle);
+            }
         } catch (error) {
             console.error('Error al cargar comidas del plan:', error);
             toast.error('Error al cargar las comidas de tu plan');
+            setComidasPlan([]);
         }
     };
 

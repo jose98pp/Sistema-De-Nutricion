@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import api from '../../config/api';
+import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
+import { logApiError } from '../../utils/logger';
 
 const RecetasIndex = () => {
     const [recetas, setRecetas] = useState([]);
@@ -9,6 +12,8 @@ const RecetasIndex = () => {
     const [search, setSearch] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
+    const toast = useToast();
+    const { confirm } = useConfirm();
 
     useEffect(() => {
         fetchRecetas();
@@ -29,14 +34,25 @@ const RecetasIndex = () => {
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('¿Está seguro de eliminar esta receta?')) {
-            try {
-                await api.delete(`/recetas/${id}`);
-                fetchRecetas();
-            } catch (error) {
-                console.error('Error al eliminar receta:', error);
-                alert('Error al eliminar la receta');
-            }
+        const receta = recetas.find(r => r.id_receta === id);
+        
+        const confirmed = await confirm({
+            title: 'Eliminar Receta',
+            message: `¿Estás seguro de que deseas eliminar "${receta?.nombre}"?`,
+            confirmText: 'Sí, eliminar',
+            cancelText: 'Cancelar',
+            type: 'danger'
+        });
+
+        if (!confirmed) return;
+
+        try {
+            await api.delete(`/recetas/${id}`);
+            toast.success('Receta eliminada exitosamente');
+            fetchRecetas();
+        } catch (error) {
+            logApiError(`/recetas/${id}`, error);
+            toast.error('Error al eliminar la receta');
         }
     };
 

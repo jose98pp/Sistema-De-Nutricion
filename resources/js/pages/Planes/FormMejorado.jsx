@@ -2,17 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import api from '../../config/api';
+import { useToast } from '../../components/Toast';
+import { logApiError } from '../../utils/logger';
 import { Plus, Trash2, Copy, Calendar, Save, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const PlanFormMejorado = () => {
     const navigate = useNavigate();
     const { id } = useParams();
+    const toast = useToast();
     const [loading, setLoading] = useState(false);
     const [contratos, setContratos] = useState([]);
     const [alimentos, setAlimentos] = useState([]);
-    const [busquedaAlimento, setBusquedaAlimento] = useState('');
+    const [busquedaAlimento, setBusquedaAlimento] = useState({});  // Objeto para búsquedas individuales por comida
     const [diaActual, setDiaActual] = useState(0);
-    
+
     const [formData, setFormData] = useState({
         nombre_plan: '',
         objetivo: 'MANTENIMIENTO',
@@ -70,21 +73,26 @@ const PlanFormMejorado = () => {
 
     const fetchPlan = async () => {
         try {
+            setLoading(true);
             const response = await api.get(`/planes-mejorados/${id}`);
-            // Cargar plan existente para edición
             const plan = response.data.data || response.data;
+            
+            // Mapear los datos del plan al formato del formulario
             setFormData({
-                nombre_plan: plan.nombre_plan,
-                objetivo: plan.objetivo,
-                calorias_objetivo: plan.calorias_objetivo,
-                descripcion: plan.descripcion,
-                id_contrato: plan.id_contrato,
-                fecha_inicio: plan.planDias?.[0]?.fecha || '',
+                nombre_plan: plan.nombre_plan || plan.nombre || '',
+                objetivo: plan.objetivo || 'MANTENIMIENTO',
+                calorias_objetivo: plan.calorias_objetivo || 2000,
+                descripcion: plan.descripcion || '',
+                id_contrato: plan.id_contrato || '',
+                fecha_inicio: plan.planDias?.[0]?.fecha || plan.fecha_inicio || '',
                 duracion_dias: plan.duracion_dias || 30,
-                dias: plan.planDias || []
+                dias: plan.planDias && plan.planDias.length > 0 ? plan.planDias : []
             });
         } catch (error) {
-            console.error('Error al cargar plan:', error);
+            logApiError(`/planes-mejorados/${id}`, error);
+            toast.error('Error al cargar el plan. Intenta nuevamente.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -124,7 +132,7 @@ const PlanFormMejorado = () => {
             .find(a => a.id_alimento === alimento.id_alimento);
 
         if (alimentoExiste) {
-            alert('Este alimento ya está en esta comida');
+            toast.warning('Este alimento ya está en esta comida');
             return;
         }
 
@@ -139,7 +147,7 @@ const PlanFormMejorado = () => {
         });
 
         setFormData({ ...formData, dias: nuevosDias });
-        setBusquedaAlimento('');
+        limpiarBusqueda(diaIndex, comidaIndex);
     };
 
     const actualizarCantidad = (diaIndex, comidaIndex, alimentoIndex, cantidad) => {
@@ -156,7 +164,7 @@ const PlanFormMejorado = () => {
 
     const copiarDia = (diaOrigenIndex) => {
         if (diaActual === diaOrigenIndex) {
-            alert('No puedes copiar el día actual al mismo día');
+            toast.warning('No puedes copiar el día actual al mismo día');
             return;
         }
 
@@ -164,10 +172,10 @@ const PlanFormMejorado = () => {
         const diaCopiado = JSON.parse(JSON.stringify(nuevosDias[diaOrigenIndex]));
         diaCopiado.dia_numero = diaActual + 1;
         diaCopiado.dia_semana = getDiaSemana(diaActual);
-        
+
         nuevosDias[diaActual] = diaCopiado;
         setFormData({ ...formData, dias: nuevosDias });
-        alert(`${getDiaSemana(diaOrigenIndex)} copiado a ${getDiaSemana(diaActual)}`);
+        toast.success(`${getDiaSemana(diaOrigenIndex)} copiado a ${getDiaSemana(diaActual)}`);
     };
 
     const calcularTotalesComida = (comida) => {
@@ -196,7 +204,7 @@ const PlanFormMejorado = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         // Verificar si hay comidas sin alimentos
         let comidasVacias = 0;
         formData.dias.forEach((dia, diaIndex) => {
@@ -206,7 +214,7 @@ const PlanFormMejorado = () => {
                 }
             });
         });
-        
+
         if (comidasVacias > 0) {
             const confirmar = window.confirm(
                 `⚠️ Hay ${comidasVacias} comidas sin alimentos.\n\n` +
@@ -217,7 +225,7 @@ const PlanFormMejorado = () => {
                 return;
             }
         }
-        
+
         setLoading(true);
 
         try {
@@ -232,7 +240,7 @@ const PlanFormMejorado = () => {
                 plan_dias: formData.dias.map((dia, index) => {
                     const fechaDia = new Date(formData.fecha_inicio);
                     fechaDia.setDate(fechaDia.getDate() + index);
-                    
+
                     return {
                         dia_numero: dia.dia_numero,
                         dia_semana: dia.dia_semana,
@@ -255,25 +263,57 @@ const PlanFormMejorado = () => {
 
             if (id) {
                 await api.put(`/planes-mejorados/${id}`, planData);
-                alert('Plan actualizado exitosamente');
+                toast.success('Plan actualizado exitosamente');
             } else {
-                await api.post('/planes-mejorados', planData);
-                alert('Plan creado exitosamente');
+                const response = await api.post('/planes-mejorados', planData);
+                toast.success('Plan creado exitosamente');
+                
+                // Mostrar información de entregas generadas si existen
+                if (response.data.calendario_entrega) {
+                    const { creado, entregas_generadas } = response.data.calendario_entrega;
+                    if (creado && entregas_generadas > 0) {
+                        toast.info(`✅ ${entregas_generadas} entrega(s) programada(s) automáticamente`);
+                    }
+                }
             }
-            
+
             navigate('/planes');
         } catch (error) {
-            console.error('Error al guardar plan:', error);
+            logApiError(id ? `/planes-mejorados/${id}` : '/planes-mejorados', error);
             const mensaje = error.response?.data?.message || 'Error al guardar el plan';
-            alert(mensaje);
+            toast.error(mensaje);
         } finally {
             setLoading(false);
         }
     };
 
-    const alimentosFiltrados = busquedaAlimento
-        ? alimentos.filter(a => a.nombre.toLowerCase().includes(busquedaAlimento.toLowerCase())).slice(0, 10)
-        : [];
+    // Función para obtener alimentos filtrados por comida específica
+    const getAlimentosFiltrados = (diaIndex, comidaIndex) => {
+        const key = `${diaIndex}-${comidaIndex}`;
+        const busqueda = busquedaAlimento[key] || '';
+        return busqueda
+            ? alimentos.filter(a => a.nombre.toLowerCase().includes(busqueda.toLowerCase())).slice(0, 10)
+            : [];
+    };
+
+    // Función para actualizar búsqueda de una comida específica
+    const handleBusquedaChange = (diaIndex, comidaIndex, value) => {
+        const key = `${diaIndex}-${comidaIndex}`;
+        setBusquedaAlimento(prev => ({
+            ...prev,
+            [key]: value
+        }));
+    };
+
+    // Función para limpiar búsqueda de una comida específica
+    const limpiarBusqueda = (diaIndex, comidaIndex) => {
+        const key = `${diaIndex}-${comidaIndex}`;
+        setBusquedaAlimento(prev => {
+            const newState = { ...prev };
+            delete newState[key];
+            return newState;
+        });
+    };
 
     const contratoSeleccionado = contratos.find(c => c.id_contrato === parseInt(formData.id_contrato));
     const diaData = formData.dias[diaActual];
@@ -305,7 +345,7 @@ const PlanFormMejorado = () => {
                             <Calendar className="w-5 h-5" />
                             Información del Plan
                         </h3>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -550,28 +590,31 @@ const PlanFormMejorado = () => {
                                         <div className="relative">
                                             <input
                                                 type="text"
-                                                value={busquedaAlimento}
-                                                onChange={(e) => setBusquedaAlimento(e.target.value)}
+                                                value={busquedaAlimento[`${diaActual}-${comidaIndex}`] || ''}
+                                                onChange={(e) => handleBusquedaChange(diaActual, comidaIndex, e.target.value)}
                                                 placeholder="Buscar alimento para agregar..."
                                                 className="input-field text-sm"
                                             />
-                                            {alimentosFiltrados.length > 0 && (
-                                                <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg max-h-60 overflow-y-auto">
-                                                    {alimentosFiltrados.map(alimento => (
-                                                        <button
-                                                            key={alimento.id_alimento}
-                                                            type="button"
-                                                            onClick={() => agregarAlimento(diaActual, comidaIndex, alimento)}
-                                                            className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm"
-                                                        >
-                                                            <div className="font-medium text-gray-800 dark:text-gray-100">{alimento.nombre}</div>
-                                                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                                                                {alimento.calorias_por_100g} kcal/100g
-                                                            </div>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
+                                            {(() => {
+                                                const alimentosFiltrados = getAlimentosFiltrados(diaActual, comidaIndex);
+                                                return alimentosFiltrados.length > 0 && (
+                                                    <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                                                        {alimentosFiltrados.map(alimento => (
+                                                            <button
+                                                                key={alimento.id_alimento}
+                                                                type="button"
+                                                                onClick={() => agregarAlimento(diaActual, comidaIndex, alimento)}
+                                                                className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+                                                            >
+                                                                <div className="font-medium text-gray-800 dark:text-gray-100">{alimento.nombre}</div>
+                                                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                                                    {alimento.calorias_por_100g} kcal/100g
+                                                                </div>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 );

@@ -31,6 +31,11 @@ class Comida extends Model
     {
         return $this->belongsTo(PlanDia::class, 'id_dia');
     }
+    
+    public function planDia()
+    {
+        return $this->belongsTo(PlanDia::class, 'id_dia', 'id_dia');
+    }
 
     public function alimentos()
     {
