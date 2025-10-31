@@ -352,9 +352,6 @@ Este proyecto es de código abierto y está disponible bajo la [MIT License](LIC
 
 ---
 
-## 👨‍💻 Autor
-
-Sistema desarrollado con ❤️ para la gestión nutricional profesional.
 
 **Versión:** 2.0  
 **Última actualización:** Octubre 2025  
@@ -448,6 +445,5 @@ Si tienes problemas o preguntas:
 **¡Gracias por usar el Sistema de Gestión Nutricional!** 🎉
 
 **Versión:** 2.1.0  
-**Última actualización:** Enero 2025  
 **Estado:** ✅ Producción Ready  
 **Licencia:** MIT
