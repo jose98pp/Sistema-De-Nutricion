@@ -1,4 +1,4 @@
-# 🔧 SOLUCIÓN: Dashboard Sin Datos - Datos Reales Poblados
+    # 🔧 SOLUCIÓN: Dashboard Sin Datos - Datos Reales Poblados
 
 ## 📋 Problema Identificado
 
