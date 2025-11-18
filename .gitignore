@@ -23,6 +23,17 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
+# Ignorar todos los Markdown
+*.md
+
+# Excepciones: mantener README.md y otros .md que quieras conservar
+!README.md
+# Si README hace referencia a docs/INSTALL.md por ejemplo, descomenta la línea siguiente
+# !docs/INSTALL.md
+
+# Ignorar la carpeta de la app que indicaste
+nutrisystem-app/
+
 
 
 
