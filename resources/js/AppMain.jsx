@@ -73,12 +73,12 @@ import HistorialSesiones from './pages/Rutinas/HistorialSesiones';
 import SesionesIndex from './pages/Sesiones/Index';
 import SesionForm from './pages/Sesiones/Form';
 import SesionView from './pages/Sesiones/View';
-import Inicio from './pages/inicio/Index';
-import InicioPlanes from './pages/inicio/Planes';
-import InicioNutricionistas from './pages/inicio/Nutricionitas';
-import InicioPsicologos from './pages/inicio/Psicologos';
-import InicioRecetas from './pages/inicio/Recetas';
-import InicioEmergencias from './pages/inicio/Emergencias';
+import Inicio from './pages/Inicio/Index.jsx';
+import InicioPlanes from './pages/Inicio/Planes';
+import InicioNutricionistas from './pages/Inicio/Nutricionitas';
+import InicioPsicologos from './pages/Inicio/Psicologos';
+import InicioRecetas from './pages/Inicio/Recetas';
+import InicioEmergencias from './pages/Inicio/Emergencias';
 import OAuthSuccess from './pages/Auth/OAuthSuccess';
 
 // Ya no necesitamos MainLayout porque las páginas usan el componente Layout
