@@ -14,36 +14,90 @@ export const AuthProvider = ({ children }) => {
         
         if (storedUser && storedToken) {
             setUser(JSON.parse(storedUser));
+            const parsed = JSON.parse(storedUser);
+            if (parsed?.role === 'paciente' && !localStorage.getItem('onboardingComplete')) {
+                localStorage.setItem('onboardingComplete', 'false');
+            }
         }
         setLoading(false);
     }, []);
 
     const login = async (email, password) => {
         try {
-            const response = await api.post('/login', { email, password });
+            const params = new URLSearchParams();
+            params.append('email', email);
+            params.append('password', password);
+            const response = await api.post('/login', params, {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
+                }
+            });
             const { user, access_token } = response.data;
-            
             localStorage.setItem('token', access_token);
             localStorage.setItem('user', JSON.stringify(user));
             setUser(user);
-            
+            if (user?.role === 'paciente' && !localStorage.getItem('onboardingComplete')) {
+                localStorage.setItem('onboardingComplete', 'false');
+            }
             return { success: true };
         } catch (error) {
-            return { 
-                success: false, 
-                error: error.response?.data?.message || 'Error al iniciar sesión' 
+            // Log the raw error for easier debugging in development
+            console.error('Login error:', error);
+
+            // Determinar mensaje de error más descriptivo
+            let errorMessage = 'Error al iniciar sesión';
+            
+            if (!error.response) {
+                // Error de red - servidor no responde
+                errorMessage = 'No se pudo conectar con el servidor. Verifica que el servidor esté corriendo.';
+                console.error('🔴 Servidor no disponible. Ejecuta: php artisan serve');
+            } else if (error.response.status === 422 || error.response.status === 401) {
+                // Credenciales incorrectas
+                errorMessage = error.response.data?.message || 'Credenciales incorrectas';
+            } else if (error.response.status >= 500) {
+                // Error del servidor
+                errorMessage = 'Error en el servidor. Por favor, intenta más tarde.';
+            } else if (error.code === 'ECONNABORTED') {
+                // Timeout
+                errorMessage = 'La conexión tardó demasiado. Verifica tu conexión a internet.';
+            } else {
+                // Otros errores
+                errorMessage = error.response?.data?.message || error.message || 'Error al iniciar sesión';
+            }
+
+            return {
+                success: false,
+                error: errorMessage
             };
         }
     };
 
     const register = async (userData) => {
         try {
-            const response = await api.post('/register', userData);
+            const params = new URLSearchParams();
+            if (userData?.name) params.append('name', userData.name);
+            if (userData?.email) params.append('email', userData.email);
+            if (userData?.telefono) params.append('telefono', userData.telefono);
+            if (userData?.password) params.append('password', userData.password);
+            if (userData?.passwordConfirmation) params.append('password_confirmation', userData.passwordConfirmation);
+            if (userData?.fecha_nacimiento) params.append('fecha_nacimiento', userData.fecha_nacimiento);
+            if (userData?.genero) params.append('genero', userData.genero);
+            if (userData?.id_nutricionista) params.append('id_nutricionista', userData.id_nutricionista);
+            const response = await api.post('/register', params, {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
+                }
+            });
             const { user, access_token } = response.data;
             
             localStorage.setItem('token', access_token);
             localStorage.setItem('user', JSON.stringify(user));
             setUser(user);
+            if (user?.role === 'paciente') {
+                localStorage.setItem('onboardingComplete', 'false');
+            }
             
             return { success: true };
         } catch (error) {
