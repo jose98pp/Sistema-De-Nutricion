@@ -6,8 +6,9 @@ import { Calendar as CalendarIcon, Filter, Download, TrendingUp, Clock, Zap } fr
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import axios from 'axios';
+import api from '../../config/api';
 import { toast } from 'react-hot-toast';
+import Layout from '../../components/Layout';
 
 const HistorialSesiones = () => {
     const [sesiones, setSesiones] = useState([]);
@@ -41,13 +42,15 @@ const HistorialSesiones = () => {
             });
 
             const [sesionesResponse, rutinasResponse, estadisticasResponse] = await Promise.all([
-                axios.get('/api/sesiones-entrenamiento', { params }),
-                axios.get('/api/mis-rutinas'),
-                axios.get('/api/sesiones-entrenamiento/estadisticas', { params })
+                api.get('/sesiones-entrenamiento', { params }),
+                api.get('/rutinas/mis-rutinas'),
+                api.get('/sesiones-entrenamiento/estadisticas', { params })
             ]);
 
-            setSesiones(sesionesResponse.data.data || sesionesResponse.data);
-            setRutinas(rutinasResponse.data);
+            const sesionesList = sesionesResponse?.data?.data ?? sesionesResponse?.data;
+            setSesiones(Array.isArray(sesionesList) ? sesionesList : Array.isArray(sesionesResponse?.data?.data) ? sesionesResponse.data.data : []);
+            const rutinasList = rutinasResponse?.data?.data ?? rutinasResponse?.data;
+            setRutinas(Array.isArray(rutinasList) ? rutinasList : []);
             setEstadisticas(estadisticasResponse.data);
         } catch (error) {
             console.error('Error al cargar datos:', error);
@@ -97,7 +100,8 @@ const HistorialSesiones = () => {
     }, {});
 
     return (
-        <div className="space-y-6">
+        <Layout>
+        <div className="container mx-auto px-4 py-8 space-y-6">
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
@@ -380,6 +384,7 @@ const HistorialSesiones = () => {
                 </Card>
             )}
         </div>
+        </Layout>
     );
 };
 

@@ -6,11 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\PlanAlimentacion;
 use App\Models\PlanDia;
 use App\Models\Comida;
+use App\Services\MealOptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PlanAlimentacionController extends Controller
 {
+    protected $mealOptionService;
+
+    public function __construct(MealOptionService $mealOptionService)
+    {
+        $this->mealOptionService = $mealOptionService;
+    }
     /**
      * Listar planes de alimentación
      */
@@ -359,4 +366,188 @@ class PlanAlimentacionController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Agregar opción de comida a un turno específico
+     */
+    public function agregarOpcionComida(Request $request, $planId, $diaId)
+    {
+        try {
+            $request->validate([
+                'tipo_comida' => 'required|in:DESAYUNO,COLACION_MATUTINA,ALMUERZO,COLACION_VESPERTINA,CENA',
+                'nombre' => 'required|string|max:150',
+                'descripcion' => 'nullable|string',
+                'instrucciones' => 'nullable|string',
+                'hora_recomendada' => 'nullable|date_format:H:i',
+                'nombre_opcion' => 'nullable|string|max:50',
+                'alimentos' => 'nullable|array',
+                'alimentos.*.id' => 'required_with:alimentos|exists:alimentos,id_alimento',
+                'alimentos.*.cantidad' => 'required_with:alimentos|numeric|min:1',
+                'recetas' => 'nullable|array',
+                'recetas.*' => 'exists:recetas,id_receta'
+            ]);
+
+            // Verificar que el plan pertenece al usuario
+            $plan = PlanAlimentacion::where('id_plan', $planId)
+                ->where('id_nutricionista', auth()->id())
+                ->firstOrFail();
+
+            // Verificar que el día pertenece al plan
+            $dia = PlanDia::where('id_dia', $diaId)
+                ->where('id_plan', $planId)
+                ->firstOrFail();
+
+            // Validar límite de opciones
+            if (!$this->mealOptionService->validarLimiteOpciones($diaId, $request->tipo_comida)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pueden agregar más de 2 opciones por turno de comida'
+                ], 400);
+            }
+
+            DB::beginTransaction();
+
+            // Crear la comida con opción
+            $comida = $this->mealOptionService->agregarOpcionComida($diaId, $request->tipo_comida, [
+                'nombre' => $request->nombre,
+                'descripcion' => $request->descripcion,
+                'instrucciones' => $request->instrucciones,
+                'hora_recomendada' => $request->hora_recomendada,
+                'nombre_opcion' => $request->nombre_opcion,
+                'orden' => 1
+            ]);
+
+            // Agregar alimentos si se proporcionaron
+            if ($request->has('alimentos') && is_array($request->alimentos)) {
+                foreach ($request->alimentos as $alimentoData) {
+                    $comida->alimentos()->attach($alimentoData['id'], [
+                        'cantidad_gramos' => $alimentoData['cantidad']
+                    ]);
+                }
+            }
+
+            // Agregar recetas si se proporcionaron
+            if ($request->has('recetas') && is_array($request->recetas)) {
+                $comida->recetas()->attach($request->recetas);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Opción de comida agregada exitosamente',
+                'data' => $comida->load(['alimentos', 'recetas'])
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error al agregar opción de comida: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al agregar la opción de comida'
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener todas las opciones de un turno específico
+     */
+    public function obtenerOpcionesComida($planId, $diaId, $tipoComida)
+    {
+        try {
+            // Verificar que el plan pertenece al usuario
+            $plan = PlanAlimentacion::where('id_plan', $planId)
+                ->where('id_nutricionista', auth()->id())
+                ->firstOrFail();
+
+            // Verificar que el día pertenece al plan
+            $dia = PlanDia::where('id_dia', $diaId)
+                ->where('id_plan', $planId)
+                ->firstOrFail();
+
+            $opciones = $this->mealOptionService->obtenerOpciones($diaId, $tipoComida);
+
+            return response()->json([
+                'success' => true,
+                'data' => $opciones
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error al obtener opciones de comida: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener las opciones de comida'
+            ], 500);
+        }
+    }
+
+    /**
+     * Eliminar una opción de comida
+     */
+    public function eliminarOpcionComida($planId, $diaId, $comidaId)
+    {
+        try {
+            // Verificar que el plan pertenece al usuario
+            $plan = PlanAlimentacion::where('id_plan', $planId)
+                ->where('id_nutricionista', auth()->id())
+                ->firstOrFail();
+
+            // Verificar que la comida pertenece al día y plan
+            $comida = Comida::where('id_comida', $comidaId)
+                ->where('id_dia', $diaId)
+                ->firstOrFail();
+
+            $this->mealOptionService->eliminarOpcion($comidaId);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Opción de comida eliminada exitosamente'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error al eliminar opción de comida: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar la opción de comida'
+            ], 500);
+        }
+    }
+
+    /**
+     * Reordenar opciones de comida
+     */
+    public function reordenarOpciones(Request $request, $planId, $diaId, $tipoComida)
+    {
+        try {
+            $request->validate([
+                'orden_ids' => 'required|array|min:1|max:2',
+                'orden_ids.*' => 'required|exists:comidas,id_comida'
+            ]);
+
+            // Verificar que el plan pertenece al usuario
+            $plan = PlanAlimentacion::where('id_plan', $planId)
+                ->where('id_nutricionista', auth()->id())
+                ->firstOrFail();
+
+            // Verificar que el día pertenece al plan
+            $dia = PlanDia::where('id_dia', $diaId)
+                ->where('id_plan', $planId)
+                ->firstOrFail();
+
+            $this->mealOptionService->reordenarOpciones($diaId, $tipoComida, $request->orden_ids);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Opciones reordenadas exitosamente'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error al reordenar opciones: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al reordenar las opciones'
+            ], 500);
+        }
+    }
+
 }

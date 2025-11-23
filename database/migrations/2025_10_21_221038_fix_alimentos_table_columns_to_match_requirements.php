@@ -60,8 +60,10 @@ return new class extends Migration
         // Categorías que no están en el nuevo ENUM, convertir a 'otro'
         DB::statement("UPDATE alimentos SET categoria = 'otro' WHERE categoria IN ('legumbres', 'frutos_secos', 'bebidas')");
 
-        // Modificar el ENUM de categorías
-        DB::statement("ALTER TABLE alimentos MODIFY categoria ENUM('fruta', 'verdura', 'cereal', 'proteina', 'lacteo', 'grasa', 'otro') DEFAULT 'otro'");
+        // Modificar el ENUM de categorías (solo en MySQL, SQLite no soporta ENUM)
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE alimentos MODIFY categoria ENUM('fruta', 'verdura', 'cereal', 'proteina', 'lacteo', 'grasa', 'otro') DEFAULT 'otro'");
+        }
     }
 
     /**
@@ -71,8 +73,10 @@ return new class extends Migration
     {
         // Revertir cambios en orden inverso
         
-        // Restaurar ENUM original
-        DB::statement("ALTER TABLE alimentos MODIFY categoria ENUM('frutas', 'verduras', 'cereales', 'proteinas', 'lacteos', 'legumbres', 'frutos_secos', 'grasas', 'bebidas', 'otro') DEFAULT 'otro'");
+        // Restaurar ENUM original (solo en MySQL, SQLite no soporta ENUM)
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE alimentos MODIFY categoria ENUM('frutas', 'verduras', 'cereales', 'proteinas', 'lacteos', 'legumbres', 'frutos_secos', 'grasas', 'bebidas', 'otro') DEFAULT 'otro'");
+        }
 
         // Revertir valores de categorías
         DB::statement("UPDATE alimentos SET categoria = 'frutas' WHERE categoria = 'fruta'");

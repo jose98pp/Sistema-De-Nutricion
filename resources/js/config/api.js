@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { logApiError, logDebug, logWarn } from '../utils/logger';
 
+const apiBase = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000');
+const needsIndex = apiBase.includes('/Nutricion/public');
 const api = axios.create({
-    baseURL: (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000') + '/api',
+    baseURL: apiBase + (needsIndex ? '/index.php/api' : '/api'),
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -46,8 +48,48 @@ api.interceptors.response.use(
     (error) => {
         const endpoint = error.config?.url || 'unknown';
         
-        // Log del error
-        logApiError(endpoint, error, error.config?.data);
+        // Determinar el tipo de error para mejor logging
+        let errorType = 'Unknown Error';
+        let errorDetails = {};
+        
+        if (!error.response) {
+            // Error de red - servidor no responde
+            errorType = 'Network Error';
+            errorDetails = {
+                message: 'No se pudo conectar con el servidor',
+                code: error.code,
+                possibleCauses: [
+                    'Servidor no está corriendo',
+                    'URL de API incorrecta',
+                    'Problema de red o firewall',
+                    'CORS no configurado'
+                ],
+                config: {
+                    url: error.config?.url,
+                    method: error.config?.method,
+                    baseURL: error.config?.baseURL,
+                    timeout: error.config?.timeout
+                }
+            };
+            
+            // Mostrar error más descriptivo en consola
+            console.error('❌ Error de Conexión:', {
+                endpoint,
+                baseURL: error.config?.baseURL,
+                fullURL: error.config?.baseURL + endpoint,
+                message: 'No se pudo conectar con el servidor. Verifica que el servidor Laravel esté corriendo.'
+            });
+        } else {
+            // Error con respuesta del servidor
+            errorDetails = {
+                status: error.response.status,
+                statusText: error.response.statusText,
+                data: error.response.data
+            };
+        }
+        
+        // Log del error con detalles mejorados
+        logApiError(endpoint, { ...error, errorType, errorDetails }, error.config?.data);
         
         // Manejar diferentes tipos de errores
         if (error.response?.status === 401) {
@@ -69,7 +111,11 @@ api.interceptors.response.use(
         } else if (error.code === 'ECONNABORTED') {
             logWarn('Request timeout', { endpoint });
         } else if (!error.response) {
-            logWarn('Network error - no response received', { endpoint });
+            logWarn('Network error - no response received', { 
+                endpoint,
+                baseURL: error.config?.baseURL,
+                suggestion: 'Verifica que el servidor esté corriendo en ' + error.config?.baseURL
+            });
         }
         
         return Promise.reject(error);

@@ -51,9 +51,9 @@ const MensajesIndex = () => {
 
     useEffect(() => {
         fetchConversations();
-        
-        // Inicializar audio para notificaciones
-        audioRef.current = new Audio('/sounds/notification.mp3');
+        const src = new URL('/sounds/notification.mp3', window.location.origin).toString();
+        audioRef.current = new Audio(src);
+        audioRef.current.preload = 'auto';
     }, []);
 
     // Actualizar usuarios online cuando cambien las conversaciones
@@ -314,10 +314,28 @@ const MensajesIndex = () => {
     };
 
     const playNotificationSound = () => {
-        if (audioRef.current && soundEnabled) {
-            audioRef.current.play().catch(err => {
-                console.log('No se pudo reproducir el sonido:', err);
-            });
+        if (soundEnabled) {
+            if (audioRef.current) {
+                audioRef.current.play().catch(() => {
+                    try {
+                        const Ctx = window.AudioContext || window.webkitAudioContext;
+                        const ctx = new Ctx();
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.value = 880;
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        gain.gain.setValueAtTime(0.001, ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.1, ctx.currentTime + 0.01);
+                        osc.start();
+                        setTimeout(() => {
+                            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
+                            osc.stop(ctx.currentTime + 0.32);
+                        }, 0);
+                    } catch (_) {}
+                });
+            }
         }
     };
 

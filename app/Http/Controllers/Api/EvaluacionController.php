@@ -282,4 +282,73 @@ class EvaluacionController extends Controller
         
         return response()->json([]);
     }
+
+    /**
+     * Crear evaluación inicial por paciente autenticado (onboarding)
+     */
+    public function storeInicialPaciente(Request $request)
+    {
+        $user = $request->user();
+        $paciente = $user->paciente ?? null;
+        if (!$paciente) {
+            return response()->json([
+                'message' => 'No eres un paciente registrado'
+            ], 403);
+        }
+
+        $request->validate([
+            'id_nutricionista' => 'required|exists:nutricionistas,id_nutricionista',
+            'observaciones' => 'nullable|string',
+            'medicion' => 'required|array',
+            'medicion.peso_kg' => 'required|numeric|min:20|max:300',
+            'medicion.altura_m' => 'required|numeric|min:0.5|max:2.5',
+            'medicion.porc_grasa' => 'nullable|numeric|min:0|max:100',
+            'medicion.masa_magra_kg' => 'nullable|numeric|min:0',
+        ]);
+
+        $existeInicial = Evaluacion::where('id_paciente', $paciente->id_paciente)
+            ->where('tipo', 'INICIAL')
+            ->exists();
+        if ($existeInicial) {
+            return response()->json([
+                'message' => 'Ya tienes una evaluación INICIAL registrada'
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $evaluacion = Evaluacion::create([
+                'id_paciente' => $paciente->id_paciente,
+                'id_nutricionista' => $request->id_nutricionista,
+                'tipo' => 'INICIAL',
+                'fecha' => now()->toDateString(),
+                'observaciones' => $request->observaciones,
+            ]);
+
+            $medicion = Medicion::create([
+                'id_evaluacion' => $evaluacion->id_evaluacion,
+                'peso_kg' => $request->medicion['peso_kg'],
+                'altura_m' => $request->medicion['altura_m'],
+                'porc_grasa' => $request->medicion['porc_grasa'] ?? null,
+                'masa_magra_kg' => $request->medicion['masa_magra_kg'] ?? null,
+            ]);
+
+            DB::commit();
+
+            $medicion->imc = $medicion->imc;
+            $medicion->clasificacion_imc = $medicion->clasificacion_imc;
+
+            return response()->json([
+                'message' => 'Evaluación inicial registrada',
+                'evaluacion' => $evaluacion->load(['paciente', 'nutricionista', 'medicion'])
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al registrar la evaluación inicial',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

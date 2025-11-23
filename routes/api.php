@@ -20,9 +20,14 @@ use App\Http\Controllers\Api\DireccionController;
 use App\Http\Controllers\Api\RecetaController;
 use App\Http\Controllers\Api\AnalisisClinicoController;
 use App\Http\Controllers\Api\CalendarioEntregaController;
+use App\Http\Controllers\Api\PsicologoController;
 use App\Http\Controllers\Api\EntregaProgramadaController;
 use App\Http\Controllers\Api\MenuSemanalController;
 use App\Http\Controllers\Api\PlanAlimentacionMejoradoController;
+use App\Http\Controllers\Api\EjercicioController;
+use App\Http\Controllers\Api\GrupoMuscularController;
+use App\Http\Controllers\Api\VideollamadaController;
+use App\Http\Controllers\Api\NutritionalAnalysisController;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,13 +36,21 @@ use App\Http\Controllers\Api\PlanAlimentacionMejoradoController;
 */
 
 // Rutas públicas
-Route::post('/register', [AuthController::class, 'register']);
+Route::post('/register', [\App\Http\Controllers\Api\RegisterController::class, 'register']);
+Route::post('/verify-email', [\App\Http\Controllers\Api\RegisterController::class, 'verifyEmail']);
+Route::post('/resend-verification', [\App\Http\Controllers\Api\RegisterController::class, 'resendVerification']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/oauth/google/token-login', [AuthController::class, 'googleTokenLogin']);
+Route::get('nutricionistas-disponibles', [NutricionistaController::class, 'index']);
+Route::get('servicios-disponibles', [ServicioController::class, 'index']);
 
 // Recuperación de contraseña
 Route::post('/forgot-password', [\App\Http\Controllers\Api\PasswordResetController::class, 'forgotPassword']);
 Route::post('/reset-password', [\App\Http\Controllers\Api\PasswordResetController::class, 'resetPassword']);
 Route::post('/verify-reset-token', [\App\Http\Controllers\Api\PasswordResetController::class, 'verifyToken']);
+
+// Zoom Webhooks (público para que Zoom pueda llamarlo)
+Route::post('/videollamadas/webhook', [\App\Http\Controllers\Api\ZoomWebhookController::class, 'handle']);
 
 // Rutas protegidas con Sanctum - Comunes para todos los roles autenticados
 Route::middleware('auth:sanctum')->group(function () {
@@ -93,6 +106,27 @@ Route::middleware('auth:sanctum')->group(function () {
     // Alimentos (lectura para todos, escritura solo admin/nutricionista)
     Route::get('alimentos', [AlimentoController::class, 'index']);
     Route::get('alimentos/{id}', [AlimentoController::class, 'show']);
+
+    // Ejercicios (lectura para todos los roles autenticados)
+    Route::get('ejercicios', [EjercicioController::class, 'index']);
+    Route::get('ejercicios/{id}', [EjercicioController::class, 'show']);
+    Route::get('modelo-anatomico', [GrupoMuscularController::class, 'modeloAnatomico']);
+
+    // Presencia y tiempo real (todos los roles autenticados)
+    Route::post('presence/status', [\App\Http\Controllers\Api\PresenceController::class, 'updateStatus']);
+    Route::post('presence/typing', [\App\Http\Controllers\Api\PresenceController::class, 'typing']);
+    Route::post('presence/get', [\App\Http\Controllers\Api\PresenceController::class, 'getPresence']);
+
+    // Autorización de canales de broadcasting vía token (evita CSRF)
+    Route::post('broadcasting/auth', [\Illuminate\Broadcasting\BroadcastController::class, 'authenticate']);
+
+    // Videollamadas (todos los roles autenticados, permiso validado en controlador)
+    Route::get('videollamada/{id}/token', [VideollamadaController::class, 'getToken']);
+    Route::get('videollamada/{id}/verificar', [VideollamadaController::class, 'verificar']);
+    Route::post('videollamada/{id}/join', [VideollamadaController::class, 'join']);
+    Route::post('videollamada/{id}/participante-unido', [VideollamadaController::class, 'participanteUnido']);
+    Route::post('videollamada/{id}/finalizar', [VideollamadaController::class, 'finalizar']);
+    Route::post('videollamada/crear', [VideollamadaController::class, 'crear']);
 });
 
 // Rutas exclusivas para Admin y Nutricionista
@@ -104,6 +138,10 @@ Route::middleware(['auth:sanctum', 'role:admin,nutricionista'])->group(function 
     // Nutricionistas - Lectura para admin y nutricionista, escritura solo admin
     Route::get('nutricionistas', [NutricionistaController::class, 'index']);
     Route::get('nutricionistas/{id}', [NutricionistaController::class, 'show']);
+
+    // Psicólogos - Lectura para admin y nutricionista
+    Route::get('psicologos', [PsicologoController::class, 'index']);
+    Route::get('psicologos/{id}', [PsicologoController::class, 'show']);
     
     // Contratos - CRUD completo para admin y nutricionista
     Route::get('contratos', [ContratoController::class, 'index']);
@@ -125,6 +163,12 @@ Route::middleware(['auth:sanctum', 'role:admin,nutricionista'])->group(function 
     Route::delete('planes/{id}', [PlanAlimentacionController::class, 'destroy']);
     Route::patch('planes/{id}/toggle-status', [PlanAlimentacionController::class, 'toggleStatus']);
     
+    // Gestión de opciones de comidas (máximo 2 por turno)
+    Route::post('planes/{planId}/dias/{diaId}/opciones', [PlanAlimentacionController::class, 'agregarOpcionComida']);
+    Route::get('planes/{planId}/dias/{diaId}/opciones/{tipoComida}', [PlanAlimentacionController::class, 'obtenerOpcionesComida']);
+    Route::delete('planes/{planId}/dias/{diaId}/opciones/{comidaId}', [PlanAlimentacionController::class, 'eliminarOpcionComida']);
+    Route::put('planes/{planId}/dias/{diaId}/opciones/{tipoComida}/reordenar', [PlanAlimentacionController::class, 'reordenarOpciones']);
+    
     // Planes de Alimentación Mejorados
     Route::get('planes-mejorados', [PlanAlimentacionMejoradoController::class, 'index']);
     Route::post('planes-mejorados', [PlanAlimentacionMejoradoController::class, 'store']);
@@ -132,6 +176,14 @@ Route::middleware(['auth:sanctum', 'role:admin,nutricionista'])->group(function 
     Route::put('planes-mejorados/{id}', [PlanAlimentacionMejoradoController::class, 'update']);
     Route::delete('planes-mejorados/{id}', [PlanAlimentacionMejoradoController::class, 'destroy']);
     Route::post('planes-mejorados/{id}/duplicar', [PlanAlimentacionMejoradoController::class, 'duplicar']);
+    
+    // Análisis Nutricional - Admin y Nutricionista
+    Route::get('analisis-nutricional/comida/{comidaId}', [NutritionalAnalysisController::class, 'analizarComida']);
+    Route::get('analisis-nutricional/dia/{diaId}', [NutritionalAnalysisController::class, 'analizarDia']);
+    Route::get('analisis-nutricional/plan/{planId}', [NutritionalAnalysisController::class, 'analizarPlan']);
+    Route::post('analisis-nutricional/plan/{planId}/comparar-objetivos', [NutritionalAnalysisController::class, 'compararConObjetivos']);
+    Route::post('analisis-nutricional/plan/{planId}/reporte', [NutritionalAnalysisController::class, 'generarReporte']);
+    Route::get('analisis-nutricional/plan/{planId}/resumen', [NutritionalAnalysisController::class, 'resumenNutricional']);
     
     // Servicios - Lectura para admin y nutricionista
     Route::get('servicios', [ServicioController::class, 'index']);
@@ -180,6 +232,11 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::post('nutricionistas', [NutricionistaController::class, 'store']);
     Route::put('nutricionistas/{id}', [NutricionistaController::class, 'update']);
     Route::delete('nutricionistas/{id}', [NutricionistaController::class, 'destroy']);
+
+    // Psicólogos - Gestión completa solo para admin
+    Route::post('psicologos', [PsicologoController::class, 'store']);
+    Route::put('psicologos/{id}', [PsicologoController::class, 'update']);
+    Route::delete('psicologos/{id}', [PsicologoController::class, 'destroy']);
     
     // Alimentos (solo escritura para admin/nutricionista)
     Route::post('alimentos', [AlimentoController::class, 'store']);
@@ -190,6 +247,11 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::post('servicios', [ServicioController::class, 'store']);
     Route::put('servicios/{id}', [ServicioController::class, 'update']);
     Route::delete('servicios/{id}', [ServicioController::class, 'destroy']);
+
+    // Ejercicios - Gestión completa solo para admin
+    Route::post('ejercicios', [EjercicioController::class, 'store']);
+    Route::put('ejercicios/{id}', [EjercicioController::class, 'update']);
+    Route::delete('ejercicios/{id}', [EjercicioController::class, 'destroy']);
 });
 
 // Rutas exclusivas para Pacientes
@@ -224,4 +286,54 @@ Route::middleware(['auth:sanctum', 'role:paciente'])->group(function () {
     // Mis Comidas de Hoy
     Route::get('progreso-del-dia', [IngestaController::class, 'progresoDelDia']);
     Route::post('registrar-rapido', [IngestaController::class, 'registrarRapido']);
+
+    Route::get('sesiones-entrenamiento', [\App\Http\Controllers\Api\SesionEntrenamientoController::class, 'index']);
+    Route::get('sesiones-entrenamiento/estadisticas', [\App\Http\Controllers\Api\SesionEntrenamientoController::class, 'estadisticas']);
+    Route::get('sesiones-entrenamiento/{id}', [\App\Http\Controllers\Api\SesionEntrenamientoController::class, 'show']);
+    Route::post('sesiones-entrenamiento', [\App\Http\Controllers\Api\SesionEntrenamientoController::class, 'store']);
+    Route::put('sesiones-entrenamiento/{id}', [\App\Http\Controllers\Api\SesionEntrenamientoController::class, 'update']);
+    Route::post('sesiones-entrenamiento/{id}/completar', [\App\Http\Controllers\Api\SesionEntrenamientoController::class, 'marcarCompletada']);
+    Route::post('sesiones-entrenamiento/sincronizar', [\App\Http\Controllers\Api\SesionEntrenamientoController::class, 'sincronizar']);
+    // Onboarding paciente: selección y suscripción
+    Route::post('suscripciones', [\App\Http\Controllers\Api\SuscripcionController::class, 'store']);
+    Route::get('suscripcion/activa', [\App\Http\Controllers\Api\SuscripcionController::class, 'activa']);
+    Route::post('mi-nutricionista', [PacienteController::class, 'asignarNutricionista']);
+    Route::post('evaluaciones/inicial', [EvaluacionController::class, 'storeInicialPaciente']);
+    Route::post('onboarding/finalizar', [AuthController::class, 'finalizeOnboarding']);
+});
+
+// Sesiones: Profesionales (admin, nutricionista, psicologo)
+Route::middleware(['auth:sanctum', 'role:admin,nutricionista,psicologo'])->group(function () {
+    Route::apiResource('sesiones', \App\Http\Controllers\Api\SesionController::class);
+    Route::post('sesiones/{id}/iniciar', [\App\Http\Controllers\Api\SesionController::class, 'iniciar']);
+    Route::post('sesiones/{id}/completar', [\App\Http\Controllers\Api\SesionController::class, 'completar']);
+    Route::post('sesiones/{id}/cancelar', [\App\Http\Controllers\Api\SesionController::class, 'cancelar']);
+});
+
+// Sesiones: Pacientes
+Route::middleware(['auth:sanctum', 'role:paciente'])->group(function () {
+    Route::get('mis-sesiones', [\App\Http\Controllers\Api\SesionController::class, 'misSesiones']);
+    Route::get('proximas-sesiones', [\App\Http\Controllers\Api\SesionController::class, 'proximasSesiones']);
+});
+
+    // Análisis Nutricional
+    Route::get('analisis-nutricional/comida/{comidaId}', [NutritionalAnalysisController::class, 'analizarComida']);
+    Route::get('analisis-nutricional/dia/{diaId}', [NutritionalAnalysisController::class, 'analizarDia']);
+    Route::get('analisis-nutricional/plan/{planId}', [NutritionalAnalysisController::class, 'analizarPlan']);
+    Route::post('analisis-nutricional/plan/{planId}/comparar-objetivos', [NutritionalAnalysisController::class, 'compararConObjetivos']);
+    Route::post('analisis-nutricional/plan/{planId}/reporte', [NutritionalAnalysisController::class, 'generarReporte']);
+    Route::get('analisis-nutricional/plan/{planId}/resumen', [NutritionalAnalysisController::class, 'resumenNutricional']);
+
+// Generación automática de recetas (Admin y Nutricionista)
+Route::middleware(['auth:sanctum', 'role:admin,nutricionista'])->group(function () {
+    Route::post('recetas/generar', [\App\Http\Controllers\Api\RecetaGeneratorController::class, 'generateRecipe']);
+    Route::post('recetas/generar-paciente/{pacienteId}', [\App\Http\Controllers\Api\RecetaGeneratorController::class, 'generateForPatient']);
+    Route::post('recetas/generar-variaciones', [\App\Http\Controllers\Api\RecetaGeneratorController::class, 'generateVariations']);
+    Route::post('recetas/guardar-generada', [\App\Http\Controllers\Api\RecetaGeneratorController::class, 'saveGeneratedRecipe']);
+    
+    // Combinaciones de alimentos
+    Route::post('alimentos/combinaciones-optimas', [\App\Http\Controllers\Api\RecetaGeneratorController::class, 'findOptimalCombinations']);
+    Route::post('alimentos/verificar-compatibilidad', [\App\Http\Controllers\Api\RecetaGeneratorController::class, 'checkCompatibility']);
+    Route::post('alimentos/sugerir-complementarios', [\App\Http\Controllers\Api\RecetaGeneratorController::class, 'suggestComplementary']);
+    Route::post('alimentos/optimizar-proporciones', [\App\Http\Controllers\Api\RecetaGeneratorController::class, 'optimizeProportions']);
 });

@@ -40,60 +40,6 @@ class PlanesEvaluacionesSeeder extends Seeder
         'CALORIAS' => ['min' => 1200, 'max' => 3500]
     ];
 
-class PlanesEvaluacionesSeeder extends Seeder
-{
-    // Constantes para tipos de comida
-    private const TIPO_COMIDA = [
-        'DESAYUNO' => 'desayuno',
-        'MEDIA_MANANA' => 'media_manana',
-        'ALMUERZO' => 'almuerzo',
-        'MERIENDA' => 'merienda',
-        'CENA' => 'cena',
-        'OTRO' => 'otro'
-    ];
-
-    // Constantes para niveles de actividad
-    private const NIVEL_ACTIVIDAD = [
-        'BAJO' => 'bajo',
-        'MODERADO' => 'moderado',
-        'ALTO' => 'alto'
-    ];
-
-    // Constantes para rangos de valores
-    private const RANGOS = [
-        'PESO' => ['min' => 30, 'max' => 200],
-        'ALTURA' => ['min' => 1.40, 'max' => 2.20],
-        'CINTURA' => ['min' => 50, 'max' => 150],
-        'CADERA' => ['min' => 70, 'max' => 160],
-        'CALORIAS' => ['min' => 1200, 'max' => 3500]
-    ];
-{
-    // Constantes para tipos de comida
-    private const TIPO_COMIDA = [
-        'DESAYUNO' => 'desayuno',
-        'MEDIA_MANANA' => 'media_manana',
-        'ALMUERZO' => 'almuerzo',
-        'MERIENDA' => 'merienda',
-        'CENA' => 'cena',
-        'OTRO' => 'otro'
-    ];
-
-    // Constantes para niveles de actividad
-    private const NIVEL_ACTIVIDAD = [
-        'BAJO' => 'bajo',
-        'MODERADO' => 'moderado',
-        'ALTO' => 'alto'
-    ];
-
-    // Constantes para rangos de valores
-    private const RANGOS = [
-        'PESO' => ['min' => 30, 'max' => 200],
-        'ALTURA' => ['min' => 1.40, 'max' => 2.20],
-        'CINTURA' => ['min' => 50, 'max' => 150],
-        'CADERA' => ['min' => 70, 'max' => 160],
-        'CALORIAS' => ['min' => 1200, 'max' => 3500]
-    ];
-
     public function run()
     {
         $pacientes = User::where('role', 'paciente')->get();
@@ -107,6 +53,7 @@ class PlanesEvaluacionesSeeder extends Seeder
         
         if ($alimentos->isEmpty()) {
             throw new InvalidArgumentException('No hay alimentos en la base de datos.');
+        }
 
         foreach ($pacientes as $paciente) {
             // Crear evaluaciones (historial de 6 meses)

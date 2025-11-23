@@ -8,7 +8,8 @@ import {
     Activity, Microscope, MapPin, Calendar, Package, BarChart3, 
     ClipboardList, Salad, Camera, Utensils, CalendarDays, Map, 
     ChefHat, FlaskConical, CalendarCheck, Truck, MessageSquare,
-    User, Moon, Sun, LogOut, ChevronDown, Menu, X, Heart, Settings
+    User, Moon, Sun, LogOut, ChevronDown, Menu, X, Heart, Settings,
+    Dumbbell, TrendingUp
 } from 'lucide-react';
 
 const Layout = ({ children }) => {
@@ -83,6 +84,7 @@ const Layout = ({ children }) => {
         { path: '/analisis-clinicos', label: 'Análisis Clínicos', icon: Microscope, roles: ['admin', 'nutricionista'] },
         { path: '/direcciones', label: 'Direcciones', icon: MapPin, roles: ['admin', 'nutricionista'] },
         { path: '/calendarios-entrega', label: 'Calendarios', icon: Calendar, roles: ['admin', 'nutricionista'] },
+        { path: '/sesiones', label: 'Sesiones', icon: Calendar, roles: ['admin', 'nutricionista', 'psicologo'] },
         { path: '/entregas', label: 'Entregas', icon: Package, roles: ['admin', 'nutricionista'] },
         { path: '/reportes', label: 'Reportes', icon: BarChart3, roles: ['admin', 'nutricionista'] },
         
@@ -95,6 +97,7 @@ const Layout = ({ children }) => {
         
         // Solo Pacientes
         { path: '/mi-plan', label: 'Mi Plan', icon: Target, roles: ['paciente'] },
+        { path: '/mis-sesiones', label: 'Mis Sesiones', icon: Calendar, roles: ['paciente'] },
         { path: '/mi-menu-semanal', label: 'Mi Menú Semanal', icon: CalendarDays, roles: ['paciente'] },
         { path: '/mis-comidas-hoy', label: 'Mis Comidas de Hoy', icon: Utensils, roles: ['paciente'] },
         { path: '/mis-direcciones', label: 'Mis Direcciones', icon: Map, roles: ['paciente'] },
@@ -103,8 +106,15 @@ const Layout = ({ children }) => {
         { path: '/mi-calendario', label: 'Mi Calendario', icon: CalendarCheck, roles: ['paciente'] },
         { path: '/mis-entregas', label: 'Mis Entregas', icon: Truck, roles: ['paciente'] },
         
+        // Rutinas y Ejercicios
+        { path: '/rutinas', label: 'Mis Rutinas', icon: Dumbbell, roles: ['paciente'] },
+        { path: '/rutinas/ejercicios', label: 'Ejercicios', icon: Activity, roles: ['admin', 'nutricionista', 'paciente'] },
+        { path: '/rutinas/gestion', label: 'Gestión Rutinas', icon: ClipboardList, roles: ['admin', 'nutricionista'] },
+        { path: '/rutinas/gestion-ejercicios', label: 'Gestión Ejercicios', icon: Settings, roles: ['admin'] },
+        { path: '/rutinas/historial', label: 'Historial', icon: TrendingUp, roles: ['paciente'] },
+        
         // Footer
-        { path: '/mensajes', label: 'Mensajes', icon: MessageSquare, roles: ['admin', 'nutricionista', 'paciente'] },
+        { path: '/mensajes', label: 'Mensajes', icon: MessageSquare, roles: ['admin', 'nutricionista', 'paciente', 'psicologo'] },
     ];
 
     const filteredMenu = menuItems.filter(item => item.roles.includes(user?.role));

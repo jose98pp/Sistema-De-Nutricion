@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../config/api';
 
 const ModeloAnatomico = ({ seleccionados = [], onSeleccionar, multiselect = true }) => {
     const [grupos, setGrupos] = useState([]);
@@ -12,8 +12,10 @@ const ModeloAnatomico = ({ seleccionados = [], onSeleccionar, multiselect = true
 
     const cargarGruposMusculares = async () => {
         try {
-            const response = await axios.get('/api/modelo-anatomico');
-            setGrupos(response.data.grupos);
+            const response = await api.get('/modelo-anatomico');
+            const data = response.data;
+            const gruposResp = Array.isArray(data) ? data : (data.grupos || []);
+            setGrupos(gruposResp);
         } catch (error) {
             console.error('Error al cargar grupos musculares:', error);
         } finally {

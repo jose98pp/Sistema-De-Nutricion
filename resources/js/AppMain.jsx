@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './components/Toast';
 import { ConfirmProvider } from './components/ConfirmDialog';
@@ -9,6 +10,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 // Pages
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
+import EmailVerification from './pages/Auth/EmailVerification';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import ResetPassword from './pages/Auth/ResetPassword';
 import Dashboard from './pages/Dashboard';
@@ -56,6 +58,28 @@ import MisEntregas from './pages/MisEntregas/Index';
 import MiMenuSemanal from './pages/MiMenuSemanal/IndexSimplificado';
 import MisComidasHoy from './pages/MisComidasHoy/Index';
 import MiPlan from './pages/MiPlan/Index';
+import VideollamadaRoom from './pages/Videollamada/Room';
+import MisSesionesPaciente from './pages/MisSesiones/Index';
+
+// Rutinas y Ejercicios
+import BibliotecaEjercicios from './pages/Rutinas/BibliotecaEjercicios';
+import EjercicioDetalle from './pages/Rutinas/EjercicioDetalle';
+import GestionEjercicios from './pages/Rutinas/GestionEjercicios';
+import MisRutinas from './pages/Rutinas/MisRutinas';
+import RutinaDetalle from './pages/Rutinas/RutinaDetalle';
+import GestionRutinas from './pages/Rutinas/GestionRutinas';
+import SesionEntrenamiento from './pages/Rutinas/SesionEntrenamiento';
+import HistorialSesiones from './pages/Rutinas/HistorialSesiones';
+import SesionesIndex from './pages/Sesiones/Index';
+import SesionForm from './pages/Sesiones/Form';
+import SesionView from './pages/Sesiones/View';
+import Inicio from './pages/inicio/Index';
+import InicioPlanes from './pages/inicio/Planes';
+import InicioNutricionistas from './pages/inicio/Nutricionitas';
+import InicioPsicologos from './pages/inicio/Psicologos';
+import InicioRecetas from './pages/inicio/Recetas';
+import InicioEmergencias from './pages/inicio/Emergencias';
+import OAuthSuccess from './pages/Auth/OAuthSuccess';
 
 // Ya no necesitamos MainLayout porque las páginas usan el componente Layout
 // que ya tiene el sidebar y header completo
@@ -68,14 +92,23 @@ function App() {
                     <ConfirmProvider>
                         <Routes>
                     {/* Public Routes */}
+                    <Route path="/" element={<HomeRouter />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    <Route path="/verify-email" element={<EmailVerification />} />
+                    <Route path="/onboarding" element={<Register />} />
                     <Route path="/forgot-password" element={<ForgotPassword />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/inicio" element={<Navigate to="/" replace />} />
+                    <Route path="/inicio/planes" element={<InicioPlanes />} />
+                    <Route path="/inicio/nutricionistas" element={<InicioNutricionistas />} />
+                    <Route path="/inicio/psicologos" element={<InicioPsicologos />} />
+                    <Route path="/inicio/recetas" element={<InicioRecetas />} />
+                    <Route path="/inicio/emergencia" element={<InicioEmergencias />} />
+                    <Route path="/oauth-success" element={<OAuthSuccess />} />
 
                     {/* Protected Routes */}
                     <Route element={<ProtectedRoute />}>
-                        <Route path="/" element={<Dashboard />} />
                         <Route path="/dashboard" element={<Dashboard />} />
                             
                             {/* Pacientes */}
@@ -131,6 +164,7 @@ function App() {
                             
                             {/* Mensajes */}
                             <Route path="/mensajes" element={<Mensajes />} />
+                        <Route path="/videollamada/:id" element={<VideollamadaRoom />} />
                             
                             {/* Fotos de Progreso */}
                             <Route path="/fotos-progreso" element={<FotosProgreso />} />
@@ -161,6 +195,7 @@ function App() {
                             
                             {/* Vistas para Pacientes */}
                             <Route path="/mi-plan" element={<MiPlan />} />
+                            <Route path="/mis-sesiones" element={<MisSesionesPaciente />} />
                             <Route path="/mis-direcciones" element={<MisDirecciones />} />
                             <Route path="/mis-recetas" element={<MisRecetas />} />
                             <Route path="/mis-analisis" element={<MisAnalisis />} />
@@ -168,6 +203,23 @@ function App() {
                             <Route path="/mis-entregas" element={<MisEntregas />} />
                             <Route path="/mi-menu-semanal" element={<MiMenuSemanal />} />
                             <Route path="/mis-comidas-hoy" element={<MisComidasHoy />} />
+                            
+                            {/* Rutinas y Ejercicios */}
+                            <Route path="/rutinas" element={<MisRutinas />} />
+                            <Route path="/rutinas/ejercicios" element={<BibliotecaEjercicios />} />
+                            <Route path="/rutinas/ejercicios/:id" element={<EjercicioDetalle />} />
+                            <Route path="/rutinas/gestion-ejercicios" element={<GestionEjercicios />} />
+                            <Route path="/rutinas/gestion" element={<GestionRutinas />} />
+                            <Route path="/rutinas/crear" element={<GestionRutinas />} />
+                            <Route path="/rutinas/:id" element={<RutinaDetalle />} />
+                            <Route path="/rutinas/sesion/:id" element={<SesionEntrenamiento />} />
+                        <Route path="/rutinas/historial" element={<HistorialSesiones />} />
+
+                            {/* Sesiones (CRUD) */}
+                            <Route path="/sesiones" element={<SesionesIndex />} />
+                            <Route path="/sesiones/nueva" element={<SesionForm />} />
+                            <Route path="/sesiones/:id" element={<SesionView />} />
+                            <Route path="/sesiones/:id/editar" element={<SesionForm />} />
                     </Route>
                     
                     {/* Redirect */}
@@ -181,3 +233,13 @@ function App() {
 }
 
 export default App;
+
+function HomeRouter() {
+    const { user, loading } = useAuth();
+    if (loading) return null;
+    if (user) {
+        const needsOnboarding = user.role === 'paciente' && localStorage.getItem('onboardingComplete') !== 'true';
+        return needsOnboarding ? <Navigate to="/onboarding" replace /> : <Navigate to="/dashboard" replace />;
+    }
+    return <Inicio />;
+}

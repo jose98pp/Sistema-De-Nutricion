@@ -1,15 +1,13 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Phone, ArrowRight, Sparkles, Apple, Users, ChefHat, Brain } from "lucide-react";
-// import heroImage from "@/assets/hero-nutrition.jpg";
-// import iconPlan from "@/assets/icon-plan.png";
-// import iconNutritionist from "@/assets/icon-nutritionist.png";
-// import iconRecipes from "@/assets/icon-recipes.png";
-// import iconPsychologist from "@/assets/icon-psychologist.png";
+import { BookOpen, Phone, ArrowRight, Sparkles, Apple, Users, ChefHat, Brain, Menu, X } from "lucide-react";
+import PublicLayout from "../../components/PublicLayout";
 
 const Index = () => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const categories = [
     {
       title: "Planes Nutricionales",
@@ -42,7 +40,7 @@ const Index = () => {
   ];
 
   return (
-    <>
+    <PublicLayout>
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
@@ -110,7 +108,7 @@ const Index = () => {
 
         <div className="grid md:grid-cols-3 gap-8">
           {categories.map((category, index) => (
-            <Link key={index} to={category.link} className="group">
+            <Link key={index} to={`/inicio${category.link}`} className="group">
               <Card className="h-full bg-gradient-card hover:shadow-xl transition-smooth border-2 border-border hover:border-primary">
                 <CardHeader>
                   <div className="flex items-start justify-between mb-4">
@@ -146,7 +144,7 @@ const Index = () => {
       <section className="bg-secondary/50 py-16">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-8">
-            <Link to="/emergencia">
+            <Link to="/inicio/emergencia">
               <Card className="h-full hover:shadow-lg transition-smooth border-2 border-accent/20 hover:border-accent bg-gradient-card">
                 <CardHeader>
                   <div className="flex items-center gap-4">
@@ -164,7 +162,7 @@ const Index = () => {
               </Card>
             </Link>
 
-            <Link to="/recursos">
+            <Link to="/inicio/recetas">
               <Card className="h-full hover:shadow-lg transition-smooth border-2 border-primary/20 hover:border-primary bg-gradient-card">
                 <CardHeader>
                   <div className="flex items-center gap-4">
@@ -185,7 +183,7 @@ const Index = () => {
         </div>
       </section>
 
-    </>
+    </PublicLayout>
   );
 };
 

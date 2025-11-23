@@ -22,11 +22,20 @@ class Sesion extends Model
         'estado',
         'motivo',
         'notas',
-        'link_videollamada'
+        'link_videollamada',
+        'zoom_meeting_id',
+        'zoom_meeting_password',
+        'zoom_join_url',
+        'zoom_start_url',
+        'participante_unido_at',
+        'finalizada_at',
+        'finalizada_por_user_id'
     ];
 
     protected $casts = [
-        'fecha_hora' => 'datetime'
+        'fecha_hora' => 'datetime',
+        'participante_unido_at' => 'datetime',
+        'finalizada_at' => 'datetime'
     ];
 
     // Relación con Paciente

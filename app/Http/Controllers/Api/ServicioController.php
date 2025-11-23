@@ -14,12 +14,19 @@ class ServicioController extends Controller
      */
     public function index()
     {
-        $servicios = Servicio::orderBy('created_at', 'desc')->get();
-        
-        return response()->json([
-            'success' => true,
-            'data' => $servicios
-        ]);
+        try {
+            $servicios = Servicio::orderBy('created_at', 'desc')->get();
+            return response()->json([
+                'success' => true,
+                'data' => $servicios
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error obteniendo servicios: '.$e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno al obtener servicios'
+            ], 500);
+        }
     }
 
     /**

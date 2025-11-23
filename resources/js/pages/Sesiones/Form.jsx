@@ -49,7 +49,13 @@ const SesionForm = () => {
         try {
             const endpoint = tipo === 'PSICOLOGO' ? '/psicologos' : '/nutricionistas';
             const response = await api.get(endpoint);
-            setProfesionales(response.data.data || response.data);
+            const listado = response.data?.data ?? response.data;
+            if (Array.isArray(listado)) {
+                setProfesionales(listado);
+            } else {
+                setProfesionales([]);
+                toast.error('Error al cargar profesionales');
+            }
         } catch (error) {
             toast.error('Error al cargar profesionales');
         }

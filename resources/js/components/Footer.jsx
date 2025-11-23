@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Heart } from 'lucide-react';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -12,7 +11,7 @@ const Footer = () => {
           {/* Logo and Description */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <Heart className="h-6 w-6 text-primary" fill="currentColor" />
+              <img src="/images/company-logo.png" alt="Nutri System" className="h-6 w-6 object-contain" />
               <h4 className="font-bold text-lg">Nutri System</h4>
             </div>
             <p className="text-muted-foreground text-sm">
@@ -25,22 +24,22 @@ const Footer = () => {
             <h5 className="font-semibold mb-4">Servicios</h5>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link to="/planes" className="hover:text-primary transition-smooth">
+                <Link to="/inicio/planes" className="hover:text-primary transition-smooth">
                   Planes Nutricionales
                 </Link>
               </li>
               <li>
-                <Link to="/nutricionistas" className="hover:text-primary transition-smooth">
+                <Link to="/inicio/nutricionistas" className="hover:text-primary transition-smooth">
                   Nutricionistas
                 </Link>
               </li>
               <li>
-                <Link to="/psicologos" className="hover:text-primary transition-smooth">
+                <Link to="/inicio/psicologos" className="hover:text-primary transition-smooth">
                   Psicólogos
                 </Link>
               </li>
               <li>
-                <Link to="/recetas" className="hover:text-primary transition-smooth">
+                <Link to="/inicio/recetas" className="hover:text-primary transition-smooth">
                   Recetas
                 </Link>
               </li>
@@ -52,12 +51,12 @@ const Footer = () => {
             <h5 className="font-semibold mb-4">Soporte</h5>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link to="/emergencia" className="hover:text-primary transition-smooth">
+                <Link to="/inicio/emergencia" className="hover:text-primary transition-smooth">
                   Emergencia
                 </Link>
               </li>
               <li>
-                <Link to="/recursos" className="hover:text-primary transition-smooth">
+                <Link to="/inicio/recursos" className="hover:text-primary transition-smooth">
                   Recursos
                 </Link>
               </li>

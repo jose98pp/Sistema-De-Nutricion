@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Search, Edit, Trash2, Users, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../config/api';
 import { toast } from 'react-hot-toast';
+import Layout from '../../components/Layout';
 
 const GestionRutinas = () => {
     const navigate = useNavigate();
@@ -35,8 +36,14 @@ const GestionRutinas = () => {
                 }
             });
 
-            const response = await axios.get('/api/rutinas', { params });
-            setRutinas(response.data.data || response.data);
+            const response = await api.get('/rutinas', { params });
+            const listado = response?.data?.data ?? response?.data;
+            const array = Array.isArray(listado)
+                ? listado
+                : Array.isArray(listado?.data)
+                    ? listado.data
+                    : [];
+            setRutinas(array);
         } catch (error) {
             console.error('Error al cargar rutinas:', error);
             toast.error('Error al cargar las rutinas');
@@ -51,7 +58,7 @@ const GestionRutinas = () => {
         }
 
         try {
-            await axios.delete(`/api/rutinas/${id}`);
+            await api.delete(`/rutinas/${id}`);
             toast.success('Rutina eliminada correctamente');
             cargarRutinas();
         } catch (error) {
@@ -70,7 +77,8 @@ const GestionRutinas = () => {
     };
 
     return (
-        <div className="space-y-6">
+        <Layout>
+        <div className="container mx-auto px-4 py-8 space-y-6">
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
@@ -223,6 +231,7 @@ const GestionRutinas = () => {
                 </Card>
             )}
         </div>
+        </Layout>
     );
 };
 

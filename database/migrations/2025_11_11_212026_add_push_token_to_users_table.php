@@ -8,16 +8,29 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('push_token')->nullable()->after('remember_token');
-            $table->json('notification_settings')->nullable()->after('push_token');
-        });
+        if (Schema::hasTable('users')) {
+            Schema::table('users', function (Blueprint $table) {
+                if (!Schema::hasColumn('users', 'push_token')) {
+                    $table->string('push_token')->nullable()->after('remember_token');
+                }
+                if (!Schema::hasColumn('users', 'notification_settings')) {
+                    $table->json('notification_settings')->nullable()->after('push_token');
+                }
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['push_token', 'notification_settings']);
-        });
+        if (Schema::hasTable('users')) {
+            Schema::table('users', function (Blueprint $table) {
+                if (Schema::hasColumn('users', 'push_token')) {
+                    $table->dropColumn('push_token');
+                }
+                if (Schema::hasColumn('users', 'notification_settings')) {
+                    $table->dropColumn('notification_settings');
+                }
+            });
+        }
     }
 };

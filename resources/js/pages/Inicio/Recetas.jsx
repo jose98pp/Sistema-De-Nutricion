@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Clock, Users, Flame, Heart } from "lucide-react";
 import ChatBot from "@/components/ChatBot";
+import PublicLayout from "../../components/PublicLayout";
 
 const Recetas = () => {
   const recetas = [
@@ -82,22 +83,7 @@ const Recetas = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-hero">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border shadow-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Link to="/">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <h1 className="text-2xl font-bold">Recetas Saludables</h1>
-          </div>
-        </div>
-      </header>
-
-      {/* Content */}
+    <PublicLayout>
       <div className="container mx-auto px-4 py-12">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold text-foreground mb-4">
@@ -169,8 +155,7 @@ const Recetas = () => {
         </div>
       </div>
 
-      <ChatBot />
-    </div>
+    </PublicLayout>
   );
 };
 

@@ -15,9 +15,14 @@ const ForgotPassword = () => {
         setLoading(true);
 
         try {
-            // Aumentar timeout para esta petición específica (30 segundos)
-            const response = await api.post('/forgot-password', { email }, {
-                timeout: 30000
+            const params = new URLSearchParams();
+            params.append('email', email);
+            const response = await api.post('/forgot-password', params, {
+                timeout: 30000,
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
+                }
             });
             
             if (response.data.success) {

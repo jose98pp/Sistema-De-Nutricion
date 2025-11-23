@@ -2,23 +2,11 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Phone, ArrowLeft, Clock, AlertCircle } from "lucide-react";
+import PublicLayout from "../../components/PublicLayout";
 
 const Emergencias = () => {
   return (
-    <div className="min-h-screen bg-gradient-hero">
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border shadow-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Link to="/">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <h1 className="text-2xl font-bold">Consulta de Emergencia</h1>
-          </div>
-        </div>
-      </header>
-
+    <PublicLayout>
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-2xl mx-auto">
           <Card className="bg-gradient-card border-2 border-accent">
@@ -60,7 +48,7 @@ const Emergencias = () => {
           </Card>
         </div>
       </div>
-    </div>
+    </PublicLayout>
   );
 };
 

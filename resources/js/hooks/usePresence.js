@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import echo from '../services/echo';
 import axios from 'axios';
+import { logApiError } from '../utils/logger';
 
 export function usePresence(userIds = []) {
     const [presences, setPresences] = useState({});
@@ -25,7 +26,7 @@ export function usePresence(userIds = []) {
 
             setPresences(presenceMap);
         } catch (error) {
-            console.error('Error fetching presences:', error);
+            logApiError('/api/presence/get', error, { user_ids: userIds });
         } finally {
             setIsLoading(false);
         }
@@ -120,7 +121,7 @@ export function useSendTypingIndicator(conversacionId) {
                 is_typing: isTyping,
             });
         } catch (error) {
-            console.error('Error sending typing indicator:', error);
+            logApiError('/api/presence/typing', error, { conversacion_id: conversacionId, is_typing: isTyping });
         }
     }, [conversacionId]);
 
@@ -152,7 +153,7 @@ export function useUpdatePresence() {
                 socket_id: socketId,
             });
         } catch (error) {
-            console.error('Error updating presence:', error);
+            logApiError('/api/presence/status', error, { status, socket_id: socketId });
         }
     }, []);
 
@@ -173,7 +174,11 @@ export function useUpdatePresence() {
         const resetTimer = () => {
             clearTimeout(inactivityTimer);
             inactivityTimer = setTimeout(async () => {
-                await axios.post('/api/presence/away');
+                try {
+                    await axios.post('/api/presence/away');
+                } catch (error) {
+                    logApiError('/api/presence/away', error);
+                }
             }, 5 * 60 * 1000); // 5 minutes
         };
 

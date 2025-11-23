@@ -27,6 +27,8 @@ class User extends Authenticatable
         'fecha_nacimiento',
         'preferences',
         'notification_settings',
+        'verification_token',
+        'verification_expires_at',
     ];
 
     /**
@@ -52,6 +54,7 @@ class User extends Authenticatable
             'fecha_nacimiento' => 'date',
             'preferences' => 'array',
             'notification_settings' => 'array',
+            'verification_expires_at' => 'datetime',
         ];
     }
 

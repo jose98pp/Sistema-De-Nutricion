@@ -21,7 +21,7 @@ class SesionEntrenamientoController extends Controller
 
     public function index(Request $request)
     {
-        $user = auth()->user();
+        $user = $request->user();
         $paciente = $user->paciente;
 
         if (!$paciente) {
@@ -49,8 +49,12 @@ class SesionEntrenamientoController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user = auth()->user();
+        $user = $request->user();
         $paciente = $user->paciente;
+
+        if (!$paciente) {
+            return response()->json(['message' => 'Usuario no es paciente'], 403);
+        }
 
         $sesion = SesionEntrenamiento::create([
             'rutina_paciente_id' => $request->rutina_paciente_id,
@@ -61,15 +65,16 @@ class SesionEntrenamientoController extends Controller
             'porcentaje_completado' => 0,
         ]);
 
-        // Crear registros de ejercicios
         $rutinaPaciente = $sesion->rutinaPaciente;
-        foreach ($rutinaPaciente->rutina->ejercicios as $ejercicio) {
-            SesionEjercicio::create([
-                'sesion_entrenamiento_id' => $sesion->id,
-                'ejercicio_id' => $ejercicio->id,
-                'completado' => false,
-                'series_completadas' => 0,
-            ]);
+        if ($rutinaPaciente && $rutinaPaciente->rutina) {
+            foreach ($rutinaPaciente->rutina->ejercicios as $ejercicio) {
+                SesionEjercicio::create([
+                    'sesion_entrenamiento_id' => $sesion->id,
+                    'ejercicio_id' => $ejercicio->id,
+                    'completado' => false,
+                    'series_completadas' => 0,
+                ]);
+            }
         }
 
         return response()->json($sesion->load('sesionEjercicios.ejercicio'), 201);
@@ -107,6 +112,12 @@ class SesionEntrenamientoController extends Controller
         return response()->json($sesion->load('sesionEjercicios.ejercicio'));
     }
 
+    public function show($id)
+    {
+        $sesion = SesionEntrenamiento::with(['rutinaPaciente.rutina', 'sesionEjercicios.ejercicio'])->findOrFail($id);
+        return response()->json($sesion);
+    }
+
     public function marcarCompletada($id)
     {
         $sesion = SesionEntrenamiento::findOrFail($id);
@@ -120,7 +131,7 @@ class SesionEntrenamientoController extends Controller
 
     public function estadisticas(Request $request)
     {
-        $user = auth()->user();
+        $user = $request->user();
         $paciente = $user->paciente;
 
         if (!$paciente) {
@@ -143,8 +154,11 @@ class SesionEntrenamientoController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user = auth()->user();
+        $user = $request->user();
         $paciente = $user->paciente;
+        if (!$paciente) {
+            return response()->json(['message' => 'Usuario no es paciente'], 403);
+        }
         $sincronizadas = [];
 
         foreach ($request->sesiones as $sesionData) {

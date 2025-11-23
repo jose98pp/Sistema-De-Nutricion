@@ -164,4 +164,30 @@ class PacienteController extends Controller
             'message' => 'Paciente eliminado exitosamente'
         ]);
     }
+
+    /**
+     * Asignar nutricionista por el propio paciente (onboarding)
+     */
+    public function asignarNutricionista(Request $request)
+    {
+        $user = $request->user();
+        $paciente = $user->paciente ?? null;
+        if (!$paciente) {
+            return response()->json([
+                'message' => 'No eres un paciente registrado'
+            ], 403);
+        }
+
+        $request->validate([
+            'id_nutricionista' => 'required|exists:nutricionistas,id_nutricionista'
+        ]);
+
+        $paciente->id_nutricionista = $request->id_nutricionista;
+        $paciente->save();
+
+        return response()->json([
+            'message' => 'Nutricionista asignado correctamente',
+            'paciente' => $paciente->load('nutricionista')
+        ]);
+    }
 }

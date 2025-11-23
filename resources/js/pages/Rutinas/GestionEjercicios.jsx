@@ -21,8 +21,9 @@ import {
 } from '@/components/ui/dialog';
 import { Search, Plus, Edit, Trash2, Eye, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../config/api';
 import { toast } from 'react-hot-toast';
+import Layout from '../../components/Layout';
 
 const GestionEjercicios = () => {
     const navigate = useNavigate();
@@ -59,8 +60,9 @@ const GestionEjercicios = () => {
                 }
             });
 
-            const response = await axios.get('/api/ejercicios', { params });
-            setEjercicios(response.data.data);
+            const response = await api.get('/ejercicios', { params });
+            const listado = response?.data?.data ?? response?.data;
+            setEjercicios(Array.isArray(listado) ? listado : Array.isArray(response?.data?.data) ? response.data.data : []);
             setPaginacion({
                 current_page: response.data.current_page,
                 last_page: response.data.last_page,
@@ -83,7 +85,7 @@ const GestionEjercicios = () => {
         if (!ejercicioEliminar) return;
 
         try {
-            await axios.delete(`/api/ejercicios/${ejercicioEliminar.id}`);
+            await api.delete(`/ejercicios/${ejercicioEliminar.id}`);
             toast.success('Ejercicio eliminado correctamente');
             setEjercicioEliminar(null);
             cargarEjercicios(paginacion.current_page);
@@ -113,7 +115,8 @@ const GestionEjercicios = () => {
     };
 
     return (
-        <div className="space-y-6">
+        <Layout>
+        <div className="container mx-auto px-4 py-8 space-y-6">
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
@@ -338,6 +341,7 @@ const GestionEjercicios = () => {
                 </DialogContent>
             </Dialog>
         </div>
+        </Layout>
     );
 };
 

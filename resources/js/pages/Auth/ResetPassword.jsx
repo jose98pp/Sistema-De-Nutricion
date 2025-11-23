@@ -59,11 +59,16 @@ const ResetPassword = () => {
         setLoading(true);
 
         try {
-            const response = await api.post('/reset-password', {
-                token,
-                email,
-                password: formData.password,
-                password_confirmation: formData.password_confirmation,
+            const params = new URLSearchParams();
+            params.append('token', token);
+            params.append('email', email);
+            params.append('password', formData.password);
+            params.append('password_confirmation', formData.password_confirmation);
+            const response = await api.post('/reset-password', params, {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
+                }
             });
 
             if (response.data.success) {

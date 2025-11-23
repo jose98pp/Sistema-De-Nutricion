@@ -38,7 +38,7 @@ const MisSesionesIndex = () => {
 
     const fetchProximasSesiones = async () => {
         try {
-            const response = await api.get('/mis-sesiones/proximas');
+            const response = await api.get('/proximas-sesiones');
             setProximasSesiones(response.data.data);
         } catch (error) {
             console.error('Error al cargar próximas sesiones:', error);

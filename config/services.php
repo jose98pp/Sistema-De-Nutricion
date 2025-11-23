@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'zoom' => [
+        'api_key' => env('ZOOM_API_KEY'),
+        'api_secret' => env('ZOOM_API_SECRET'),
+        'base_url' => env('ZOOM_BASE_URL', 'https://api.zoom.us/v2'),
+        'webhook_secret' => env('ZOOM_WEBHOOK_SECRET'),
+    ],
+
 ];

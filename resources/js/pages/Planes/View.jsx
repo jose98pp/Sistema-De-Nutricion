@@ -35,11 +35,13 @@ const PlanView = () => {
     };
 
     const getTipoComidaIcon = (tipo) => {
+        if (tipo === 'snack') {
+            return <img src="/images/company-logo.png" alt="Snack" className="h-6 w-6" />;
+        }
         const icons = {
             'desayuno': '🌅',
             'almuerzo': '🍽️',
-            'cena': '🌙',
-            'snack': '🍎'
+            'cena': '🌙'
         };
         return icons[tipo] || '🍴';
     };
@@ -127,7 +129,7 @@ const PlanView = () => {
                         {diaActual.comidas?.sort((a, b) => a.orden - b.orden).map((comida) => (
                             <div key={comida.id_comida} className="card">
                                 <div className="flex items-center gap-3 mb-4">
-                                    <span className="text-3xl">{getTipoComidaIcon(comida.tipo_comida)}</span>
+                                    <span className="text-3xl flex items-center">{getTipoComidaIcon(comida.tipo_comida)}</span>
                                     <h4 className="text-xl font-bold capitalize">{comida.tipo_comida}</h4>
                                 </div>
 

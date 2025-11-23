@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, Play, Clock, Target, Calendar, TrendingUp, Dumbbell } from 'lucide-react';
-import axios from 'axios';
+import api from '../../config/api';
 import { toast } from 'react-hot-toast';
+import Layout from '../../components/Layout';
 
 const RutinaDetalle = () => {
     const { id } = useParams();
@@ -25,9 +26,9 @@ const RutinaDetalle = () => {
         try {
             setLoading(true);
             const [rutinaResponse, historialResponse, estadisticasResponse] = await Promise.all([
-                axios.get(`/api/rutinas/${id}`),
-                axios.get(`/api/sesiones-entrenamiento?rutina_id=${id}`),
-                axios.get(`/api/sesiones-entrenamiento/estadisticas?rutina_id=${id}`)
+                api.get(`/rutinas/${id}`),
+                api.get(`/sesiones-entrenamiento`, { params: { rutina_id: id } }),
+                api.get(`/sesiones-entrenamiento/estadisticas`, { params: { rutina_id: id } })
             ]);
             
             setRutina(rutinaResponse.data);
@@ -44,7 +45,7 @@ const RutinaDetalle = () => {
 
     const iniciarEntrenamiento = async () => {
         try {
-            const response = await axios.post('/api/sesiones-entrenamiento', {
+            const response = await api.post('/sesiones-entrenamiento', {
                 rutina_paciente_id: rutina.id
             });
             
@@ -98,7 +99,8 @@ const RutinaDetalle = () => {
     const progreso = rutina.progreso || { sesiones_completadas: 0, sesiones_totales: 0, porcentaje: 0 };
 
     return (
-        <div className="space-y-6">
+        <Layout>
+        <div className="container mx-auto px-4 py-8 space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -462,6 +464,7 @@ const RutinaDetalle = () => {
                 </TabsContent>
             </Tabs>
         </div>
+        </Layout>
     );
 };
 

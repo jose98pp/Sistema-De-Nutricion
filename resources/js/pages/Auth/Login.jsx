@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Mail, Lock, LogIn, Sparkles, Heart, TrendingUp } from 'lucide-react';
 
@@ -7,9 +7,20 @@ const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const { login } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Mostrar mensaje de éxito si viene del registro
+    useEffect(() => {
+        if (location.state?.message) {
+            setSuccessMessage(location.state.message);
+            // Limpiar el mensaje después de 5 segundos
+            setTimeout(() => setSuccessMessage(''), 5000);
+        }
+    }, [location]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -24,6 +35,11 @@ const Login = () => {
             setError(result.error);
         }
         setLoading(false);
+    };
+
+    const handleOAuth = (provider) => {
+        const baseUrl = import.meta.env.VITE_API_URL || window.location.origin;
+        window.location.href = `${baseUrl}/oauth/${provider}/redirect`;
     };
 
     return (
@@ -98,6 +114,12 @@ const Login = () => {
                             Ingresa tus credenciales para continuar
                         </p>
                     </div>
+
+                    {successMessage && (
+                        <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border border-green-200 dark:border-green-800/50 text-green-700 dark:text-green-300 px-4 py-3 rounded-xl mb-6 animate-fadeIn">
+                            <p className="text-sm font-medium">{successMessage}</p>
+                        </div>
+                    )}
 
                     {error && (
                         <div className="bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl mb-6 animate-fadeIn">
@@ -174,6 +196,11 @@ const Login = () => {
                                 Regístrate aquí
                             </Link>
                         </p>
+                    </div>
+
+                    <div className="mt-6 grid grid-cols-2 gap-3">
+                        <button type="button" disabled={loading} className="btn-outline" onClick={() => handleOAuth('google')}>Continuar con Google</button>
+                        <button type="button" disabled={loading} className="btn-outline" onClick={() => handleOAuth('facebook')}>Continuar con Facebook</button>
                     </div>
 
                     <div className="mt-8 p-5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/50 dark:to-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700/50">

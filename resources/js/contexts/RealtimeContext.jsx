@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import echo from '../services/echo';
 import { useToast } from '../components/Toast';
 import axios from 'axios';
+import { logApiError } from '../utils/logger';
 
 const RealtimeContext = createContext();
 
@@ -96,12 +97,17 @@ export function RealtimeProvider({ children, user }) {
         echo.connector.pusher.connection.bind('connected', () => {
             console.log('WebSocket connected');
             setIsConnected(true);
-            
-            // Update presence to online
-            axios.post('/api/presence/status', {
-                status: 'online',
-                socket_id: echo.socketId(),
-            }).catch(err => console.error('Error updating presence:', err));
+            const updateOnline = async () => {
+                try {
+                    await axios.post('/api/presence/status', {
+                        status: 'online',
+                        socket_id: echo.socketId(),
+                    });
+                } catch (error) {
+                    logApiError('/api/presence/status', error, { status: 'online' });
+                }
+            };
+            updateOnline();
         });
 
         echo.connector.pusher.connection.bind('disconnected', () => {
@@ -143,26 +149,32 @@ export function RealtimeProvider({ children, user }) {
             }));
         });
 
-        // Mark as away after 5 minutes of inactivity
-        let inactivityTimer;
-        const resetTimer = () => {
-            clearTimeout(inactivityTimer);
-            inactivityTimer = setTimeout(() => {
-                axios.post('/api/presence/away').catch(err => 
-                    console.error('Error marking as away:', err)
-                );
-            }, 5 * 60 * 1000); // 5 minutes
-        };
+            // Mark as away after 5 minutes of inactivity
+            let inactivityTimer;
+            const resetTimer = () => {
+                clearTimeout(inactivityTimer);
+                inactivityTimer = setTimeout(() => {
+                axios.post('/api/presence/away').catch(err => {
+                    logApiError('/api/presence/away', err);
+                });
+                }, 5 * 60 * 1000); // 5 minutes
+            };
 
         const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
         events.forEach(event => document.addEventListener(event, resetTimer));
         resetTimer();
 
         return () => {
-            // Update presence to offline
-            axios.post('/api/presence/status', {
-                status: 'offline',
-            }).catch(err => console.error('Error updating presence:', err));
+            const updateOffline = async () => {
+                try {
+                    await axios.post('/api/presence/status', {
+                        status: 'offline',
+                    });
+                } catch (error) {
+                    logApiError('/api/presence/status', error, { status: 'offline' });
+                }
+            };
+            updateOffline();
             
             echo.leave(`user.${user.id}`);
             echo.leave('presence');

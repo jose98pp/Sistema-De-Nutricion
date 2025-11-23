@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Heart, Phone, Menu, X } from 'lucide-react';
+import { Phone, Menu, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 const PublicHeader = () => {
@@ -10,11 +10,11 @@ const PublicHeader = () => {
   const navigate = useNavigate();
 
   const navLinks = [
-    { to: '/planes', label: 'Planes' },
-    { to: '/nutricionistas', label: 'Nutricionistas' },
-    { to: '/psicologos', label: 'Psicólogos' },
-    { to: '/recetas', label: 'Recetas' },
-    { to: '/recursos', label: 'Recursos' },
+    { to: '/inicio/planes', label: 'Planes' },
+    { to: '/inicio/nutricionistas', label: 'Nutricionistas' },
+    { to: '/inicio/psicologos', label: 'Psicólogos' },
+    { to: '/inicio/recetas', label: 'Recetas' },
+    { to: '/inicio/recursos', label: 'Recursos' },
   ];
 
   const handleLoginClick = () => {
@@ -35,7 +35,11 @@ const PublicHeader = () => {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <Heart className="h-8 w-8 text-primary" fill="currentColor" />
+            <img
+              src="/images/company-logo.png"
+              alt="Nutri System"
+              className="h-8 w-8 object-contain"
+            />
             <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
               Nutri System
             </h1>
@@ -53,7 +57,7 @@ const PublicHeader = () => {
               </Link>
             ))}
             
-            <Link to="/emergencia">
+            <Link to="/inicio/emergencia">
               <Button variant="accent" size="sm">
                 <Phone className="h-4 w-4 mr-2" />
                 Emergencia

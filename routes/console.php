@@ -14,3 +14,9 @@ Schedule::command('notificaciones:comidas')
     ->everyFifteenMinutes()
     ->withoutOverlapping()
     ->runInBackground();
+
+// Programar limpieza de sesiones huérfanas cada 15 minutos
+Schedule::command('videollamadas:cleanup')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
