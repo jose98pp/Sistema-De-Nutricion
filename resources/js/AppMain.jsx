@@ -73,7 +73,7 @@ import HistorialSesiones from './pages/Rutinas/HistorialSesiones';
 import SesionesIndex from './pages/Sesiones/Index';
 import SesionForm from './pages/Sesiones/Form';
 import SesionView from './pages/Sesiones/View';
-import Inicio from './pages/Inicio/Index.jsx';
+import Inicio from './pages/Inicio/Index';
 import InicioPlanes from './pages/Inicio/Planes';
 import InicioNutricionistas from './pages/Inicio/Nutricionitas';
 import InicioPsicologos from './pages/Inicio/Psicologos';
@@ -81,8 +81,6 @@ import InicioRecetas from './pages/Inicio/Recetas';
 import InicioEmergencias from './pages/Inicio/Emergencias';
 import OAuthSuccess from './pages/Auth/OAuthSuccess';
 
-// Ya no necesitamos MainLayout porque las páginas usan el componente Layout
-// que ya tiene el sidebar y header completo
 
 function App() {
     return (
