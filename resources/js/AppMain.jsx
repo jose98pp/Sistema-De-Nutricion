@@ -73,7 +73,7 @@ import HistorialSesiones from './pages/Rutinas/HistorialSesiones';
 import SesionesIndex from './pages/Sesiones/Index';
 import SesionForm from './pages/Sesiones/Form';
 import SesionView from './pages/Sesiones/View';
-import Inicio from './pages/Inicio/Index';
+import Inicio from './pages/Inicio/Index.jsx';
 import InicioPlanes from './pages/Inicio/Planes';
 import InicioNutricionistas from './pages/Inicio/Nutricionitas';
 import InicioPsicologos from './pages/Inicio/Psicologos';
